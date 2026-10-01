@@ -9,17 +9,21 @@ Recordio 是一款免费开源的桌面录屏与视频编辑软件，适合制�
 ## 相比所用 Recordly 基础版本的改进
 
 Recordly 原本已具备屏幕录制、剪辑、缩放、背景和光标效果。以下是 Recordio 在此基础上增加或调整的内容：
+<img width="1740" height="1133" alt="image" src="https://github.com/user-attachments/assets/6f1b34d3-9138-4656-993e-bdbc1c5ccf86" />
+<img width="321" height="792" alt="image" src="https://github.com/user-attachments/assets/7f98d72c-ed6d-40fb-a808-14d70c362d60" />
+<img width="322" height="794" alt="image" src="https://github.com/user-attachments/assets/256fbe2e-36f9-4e60-b22a-1649e0738d35" />
+
 
 - **光标呈现：**增加可缩放的光标样式；左键与右键可以分别设置点击效果、颜色和内置音效；改善光标移动和点击动画的平滑度。
 - **动效与画质：**增加运动预设，包括弹性方案；改善预览和导出时视频圆角描边及点击波纹的平滑度。
 - **编辑体验：**项目加载提示、更醒目的轨道选中状态、时间线缩放与帧数／秒数步进调节、方向键控制，以及清除全部缩放效果的操作。
 - **导出体验：**先选保存位置再导出；增加高码率选项、已用时间与动态剩余时间、完成提示音，并改进无音频视频及编码器回退的处理。实际导出能力仍受设备编码器和驱动影响。
 - **录制与项目管理：**改善长时间录制后的保存可靠性；确认删除项目及视频时，会同步将对应光标、诊断和音频配套文件移入回收站，并防止删除仍被其他项目使用的视频。
-- **界面与软件身份：**扩充简体中文界面、通知和快捷键文案；采用独立的 Recordio 应用身份和数据目录，可与 Recordly 共存。
+- **界面与软件身份：**完善简体中文界面、通知和快捷键文案；采用独立的 Recordio 应用身份和数据目录，可与 Recordly 共存。
 
 ## 平台与构建
 
-源码面向 Windows、macOS 和 Linux。Windows 安装包已在本地构建；macOS 包需要在 Mac 构建环境中生成，尚未在这台 Windows 开发机上验证。
+源码面向 Windows、macOS 和 Linux。
 
 使用 Node.js 22 和 npm：
 
