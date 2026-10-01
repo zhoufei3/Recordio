@@ -1,0 +1,22 @@
+{
+	"actions": {
+		"addZoom": "Add Zoom",
+		"splitClip": "Split Clip",
+		"addTrim": "Add Trim",
+		"addSpeed": "Add Speed",
+		"addAnnotation": "Add Annotation",
+		"addKeyframe": "Add Keyframe",
+		"deleteSelected": "Delete Selected",
+		"playPause": "Play / Pause",
+		"cycleForward": "Cycle Annotations Forward",
+		"cycleBackward": "Cycle Annotations Backward",
+		"deleteSelectedAlt": "Delete Selected (alt)",
+		"panTimeline": "Pan Timeline",
+		"zoomTimeline": "Zoom Timeline"
+	},
+	"keys": {
+		"space": "Space",
+		"panTimeline": "Shift + Scroll",
+		"zoomTimeline": "Ctrl + Scroll"
+	}
+}

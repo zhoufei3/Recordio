@@ -1,0 +1,146 @@
+// @see - https://www.electron.build/configuration/configuration
+{
+  "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+  "appId": "dev.recordio.app",
+  "electronUpdaterCompatibility": ">=2.16",
+  "asar": true,
+  "asarUnpack": [
+    "node_modules/ffmpeg-static/**",
+    "node_modules/ffprobe-static/**",
+    "node_modules/uiohook-napi/**",
+    "electron/native/bin/win32-x64/*.dll",
+    "electron/native/bin/win32-x64/*.json",
+    "electron/native/bin/win32-x64/wgc-capture.exe",
+    "electron/native/bin/win32-x64/recordly-gpu-export.exe",
+    "electron/native/bin/win32-x64/recordly-nvidia-cuda-compositor.exe",
+    "electron/native/bin/win32-x64/cursor-monitor.exe",
+    "electron/native/bin/win32-x64/whisper-cli.exe",
+    "electron/native/bin/darwin-arm64/*",
+    "electron/native/bin/darwin-x64/*"
+  ],
+  "productName": "Recordio",
+  "protocols": [
+    {
+      "name": "Recordio authentication",
+      "schemes": ["recordio"]
+    }
+  ],
+  "npmRebuild": true,
+  "buildDependenciesFromSource": true,
+  "compression": "normal",
+  "directories": {
+    "output": "release"
+  },
+  "files": [
+    "dist",
+    "!dist/wallpapers/**",
+    "dist-electron",
+    "electron/native/bin/win32-x64/*.dll",
+    "electron/native/bin/win32-x64/*.json",
+    "electron/native/bin/win32-x64/wgc-capture.exe",
+    "electron/native/bin/win32-x64/recordly-gpu-export.exe",
+    "electron/native/bin/win32-x64/recordly-nvidia-cuda-compositor.exe",
+    "electron/native/bin/win32-x64/cursor-monitor.exe",
+    "electron/native/bin/win32-x64/whisper-cli.exe",
+    "electron/native/bin/darwin-arm64/*",
+    "electron/native/bin/darwin-x64/*",
+    "!electron/native/bin/**/whisper-bench*",
+    "!electron/native/bin/**/whisper-quantize*",
+    "!electron/native/bin/**/whisper-server*",
+    "!electron/native/bin/**/whisper-vad-speech-segments*",
+    "!node_modules/ffprobe-static/bin/linux/**",
+    "!node_modules/ffprobe-static/bin/win32/ia32/**",
+    "!electron/native/**/build/**",
+    "!*.png",
+    "!preview*.png",
+    "!*.md",
+    "!README.md",
+    "!CONTRIBUTING.md",
+    "!LICENSE"
+  ],
+  "extraResources": [
+    {
+      "from": "public/wallpapers",
+      "to": "assets/wallpapers"
+    }
+  ],
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "zhoufei3",
+      "repo": "Recordio",
+      "tagNamePrefix": "v",
+      "publishAutoUpdate": true
+    }
+  ],
+
+  "mac": {
+    "hardenedRuntime": true,
+    "entitlements": "build/entitlements.mac.plist",
+    "entitlementsInherit": "build/entitlements.mac.inherit.plist",
+    "target": [
+      {
+        "target": "dmg",
+        "arch": ["x64", "arm64"]
+      },
+      {
+        "target": "zip",
+        "arch": ["x64", "arm64"]
+      }
+    ],
+    "icon": "icons/mac/icon.icns",
+    "artifactName": "${productName}-${arch}.${ext}",
+    "extendInfo": {
+      "NSAudioCaptureUsageDescription": "Recordio needs audio capture permission to record system audio.",
+      "NSCameraUsageDescription": "Recordio needs camera access to record webcam video.",
+      "NSMicrophoneUsageDescription": "Recordio needs microphone access to record voice audio.",
+      "NSCameraUseContinuityCameraDeviceType": true,
+      "com.apple.security.device.audio-input": true,
+      "CFBundleDocumentTypes": [
+        {
+          "CFBundleTypeName": "Recordio Project",
+          "CFBundleTypeRole": "Editor",
+          "CFBundleTypeExtensions": ["recordly"],
+          "CFBundleTypeIconFile": "icon.icns",
+          "LSHandlerRank": "Owner",
+          "LSItemContentTypes": ["dev.recordio.app.project"]
+        }
+      ],
+      "UTExportedTypeDeclarations": [
+        {
+          "UTTypeIdentifier": "dev.recordio.app.project",
+          "UTTypeDescription": "Recordio Project",
+          "UTTypeConformsTo": ["public.json"],
+          "UTTypeTagSpecification": {
+            "public.filename-extension": ["recordly"],
+            "public.mime-type": "application/x-recordly-project"
+          }
+        }
+      ]
+    }
+  },
+  "linux": {
+    "target": [
+      "AppImage"
+    ],
+    "icon": "icons/png",
+    "artifactName": "${productName}-linux-x64.${ext}",
+    "category": "AudioVideo"
+  },
+  "win": {
+    "electronLanguages": ["en-US", "zh-CN"],
+    "target": [
+      "nsis"
+    ],
+    "icon": "icons/win/icon.ico",
+    "executableName": "Recordio",
+    "artifactName": "${productName}-windows-${arch}.${ext}"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "Recordio"
+  }
+}
