@@ -5,6 +5,7 @@ import { Cloud, ImageSquare } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 
 import { DashboardSettings } from "./DashboardSettings";
+import { DashboardGuide } from "./DashboardGuide";
 
 import { ProjectCard } from "./ProjectCard";
 import { useScopedT } from "@/contexts/I18nContext";
@@ -81,6 +82,8 @@ export function DashboardGrid({
 				)}
 				{section === "settings" ? (
 					<DashboardSettings onImportFile={onImportFile} />
+				) : section === "guide" ? (
+					<DashboardGuide />
 				) : section === "shared" ? (
 					<div className="flex h-64 flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
 						<Cloud weight="fill" className="size-8 opacity-40" />

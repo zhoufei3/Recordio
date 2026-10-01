@@ -388,6 +388,9 @@
 		"title": "About Recordio",
 		"attribution": "Recordio is an independently modified version of the open-source screen recorder and editor Recordly by webadderall. It is not an official Recordly release.",
 		"license": "The original project is licensed under GNU AGPLv3. Copyright © 2026 webadderall. This version retains the applicable copyright and license notices.",
+		"maintainer": "Recordio is developed and maintained by Zhou Fei.",
+		"starInvitation": "If Recordio helps you, please give my first GitHub project a Star! 🙂",
+		"recordioRepository": "Recordio repository",
 		"repository": "Original repository",
 		"licenseLink": "Original license"
 	},

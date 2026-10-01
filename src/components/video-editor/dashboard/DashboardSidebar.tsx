@@ -1,8 +1,7 @@
-import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
 import { RecordNewButton } from "./RecordNewButton";
 import { SidebarCards } from "./SidebarCards";
 import { FolderRow } from "./FolderRow";
-import { Cloud, File, GearSix, House, Plus, UserCircle } from "@/components/ui/icons";
+import { Cloud, File, GearSix, House, Plus, Question, UserCircle } from "@/components/ui/icons";
 
 import { Button } from "@/components/ui/button";
 import { useScopedT } from "@/contexts/I18nContext";
@@ -138,7 +137,15 @@ export function DashboardSidebar({
 				</div>
 				<div className="space-y-1 pt-6">
 					<SidebarCards />
-					<FeedbackDialog showLabel className={navClass(false)} onSignIn={onSignIn} />
+					<Button
+						variant="ghost"
+						className={navClass(section === "guide")}
+						aria-current={section === "guide" ? "page" : undefined}
+						onClick={() => setSection("guide")}
+					>
+						<Question weight={section === "guide" ? "fill" : "regular"} className="size-[18px]" />
+						{t("dashboard.nav.guide", "Guide")}
+					</Button>
 					<Button
 						variant="ghost"
 						className={navClass(section === "settings")}
