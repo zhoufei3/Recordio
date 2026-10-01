@@ -244,11 +244,16 @@
 			"raw": "Raw",
 			"folders": "Folders",
 			"settings": "Settings",
+			"guide": "Guide",
 			"signIn": "Sign in",
 			"newFolder": "New folder",
 			"folderName": "Untitled folder",
 			"recordNew": "Record new",
 			"recordFirst": "Record your first video"
+		},
+		"guide": {
+			"title": "Recordio guide",
+			"intro": "Follow these steps from your first recording through editing and export. You can return to this guide from Home at any time."
 		},
 		"toolbar": {
 			"searchProjects": "Search projects…",

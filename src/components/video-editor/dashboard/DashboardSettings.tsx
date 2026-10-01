@@ -163,6 +163,14 @@ export function DashboardSettings({ onImportFile }: { onImportFile: () => Promis
 						<h2 className="text-base font-semibold">{t("about.title", "About Recordio")}</h2>
 						<p>{t("about.attribution", "Recordio is an independently modified version of the open-source screen recorder and editor Recordly by webadderall. It is not an official Recordly release.")}</p>
 						<p>{t("about.license", "The original project is licensed under GNU AGPLv3. Copyright © 2026 webadderall. This version retains the applicable copyright and license notices.")}</p>
+						<p>{t("about.maintainer", "Recordio is developed and maintained by Zhou Fei.")}</p>
+						<p>{t("about.starInvitation", "If Recordio helps you, please give my first GitHub project a Star! 🙂")}</p>
+						<p>
+							{t("about.recordioRepository", "Recordio repository")}{": "}
+							<a className="text-primary underline underline-offset-4" href="https://github.com/zhoufei3/Recordio" onClick={(event) => { event.preventDefault(); void window.electronAPI.openExternalUrl(event.currentTarget.href); }}>
+								https://github.com/zhoufei3/Recordio
+							</a>
+						</p>
 						<p>
 							{t("about.repository", "Original repository")}{": "}
 							<a className="text-primary underline underline-offset-4" href="https://github.com/webadderallorg/Recordly" onClick={(event) => { event.preventDefault(); void window.electronAPI.openExternalUrl(event.currentTarget.href); }}>

@@ -388,6 +388,9 @@
 		"title": "关于 Recordio",
 		"attribution": "Recordio 是基于 webadderall 的开源录屏与视频编辑软件 Recordly 优化的独立版本，并非 Recordly 官方发行版。",
 		"license": "原项目采用 GNU AGPLv3 许可证。版权所有 © 2026 webadderall。本版本保留适用的版权与许可声明。",
+		"maintainer": "Recordio 由周肥开发维护。",
+		"starInvitation": "如果这个软件对你有帮助，请给我的第一个 GitHub 项目点个 Star 吧！🙂",
+		"recordioRepository": "Recordio 项目仓库",
 		"repository": "原项目仓库",
 		"licenseLink": "原项目许可证"
 	},

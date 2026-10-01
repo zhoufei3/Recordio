@@ -21,7 +21,7 @@ export function Dashboard(props: DashboardProps) {
 						>
 							<DashboardSidebar {...view} />
 							<Card className="dashboard-main my-3 mr-3 flex min-h-0 min-w-0 flex-1 flex-col gap-0 overflow-hidden rounded-2xl p-0 shadow-sm">
-								{model.section !== "settings" && model.section !== "shared" && (
+								{model.section !== "settings" && model.section !== "shared" && model.section !== "guide" && (
 									<>
 										<DashboardAnnouncements />
 										<DashboardToolbar {...view} />
