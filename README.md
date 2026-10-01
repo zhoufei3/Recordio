@@ -1,6 +1,6 @@
 # Recordio
 
-[简体中文](README.zh-CN.md) | English
+[简体中文](README.md) | English
 
 <p align="center"><img src="public/app-icons/recordio-256.png" width="128" alt="Recordio icon" /></p>
 
@@ -19,7 +19,7 @@ The features below describe changes relative to the Recordly base used for this 
 
 ## Platforms and building
 
-The source targets Windows, macOS, and Linux. Windows packaging has been run locally. macOS packages require a macOS build host and have not been verified on this Windows development machine.
+The source targets Windows, macOS, and Linux. 
 
 Use Node.js 22 and npm:
 
