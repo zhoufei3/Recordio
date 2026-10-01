@@ -21,7 +21,7 @@ Recordly 原本已具备屏幕录制、剪辑、缩放、背景和光标效果�
 <img width="1740" height="1133" alt="image" src="https://github.com/user-attachments/assets/6f1b34d3-9138-4656-993e-bdbc1c5ccf86" />
 <img width="321" height="792" alt="image" src="https://github.com/user-attachments/assets/7f98d72c-ed6d-40fb-a808-14d70c362d60" />
 <img width="322" height="794" alt="image" src="https://github.com/user-attachments/assets/256fbe2e-36f9-4e60-b22a-1649e0738d35" />
-<img width="323" height="789" alt="image" src="https://github.com/user-attachments/assets/54a5a352-765f-4e81-a214-b94d578d0c91" />
+
 
 
 
