@@ -1,6 +1,6 @@
 # Recordio
 
-简体中文 | [English](README.md)
+简体中文 | [English](README-EN.md)
 
 <p align="center"><img src="public/app-icons/recordio-256.png" width="128" alt="Recordio 图标" /></p>
 
