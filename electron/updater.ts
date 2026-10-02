@@ -17,7 +17,7 @@ const UPDATE_FEED_URL_OVERRIDE =
 	"";
 // The upstream Recordly feed must not install its releases over Recordio.
 const AUTO_UPDATES_DISABLED =
-	process.env.RECORDLY_DISABLE_AUTO_UPDATES === "1" || !UPDATE_FEED_URL_OVERRIDE;
+	process.env.RECORDLY_DISABLE_AUTO_UPDATES === "1";
 const UPDATER_LOG_PATH =
 	process.env.RECORDLY_UPDATER_LOG_PATH?.trim() || path.join(USER_DATA_PATH, "updater.log");
 const DEV_UPDATE_PREVIEW_VERSION = "9.9.9";

@@ -89,7 +89,7 @@
       }
     ],
     "icon": "icons/mac/icon.icns",
-    "artifactName": "${productName}-${arch}.${ext}",
+    "artifactName": "${productName}-${version}-${arch}.${ext}",
     "extendInfo": {
       "NSAudioCaptureUsageDescription": "Recordio needs audio capture permission to record system audio.",
       "NSCameraUsageDescription": "Recordio needs camera access to record webcam video.",
@@ -124,7 +124,7 @@
       "AppImage"
     ],
     "icon": "icons/png",
-    "artifactName": "${productName}-linux-x64.${ext}",
+    "artifactName": "${productName}-${version}-linux-x64.${ext}",
     "category": "AudioVideo"
   },
   "win": {
@@ -134,7 +134,7 @@
     ],
     "icon": "icons/win/icon.ico",
     "executableName": "Recordio",
-    "artifactName": "${productName}-windows-${arch}.${ext}"
+    "artifactName": "${productName}-${version}-windows-${arch}.${ext}"
   },
   "nsis": {
     "oneClick": false,
