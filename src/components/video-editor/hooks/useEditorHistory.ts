@@ -34,6 +34,9 @@ export function useEditorHistory({
 		speedRegions,
 		annotationRegions,
 		audioRegions,
+		effectAudioVolumes,
+		effectAudioStartOverrides,
+		disabledEffectAudioIds,
 		autoCaptions,
 		selectedZoomId,
 		selectedClipId,
@@ -44,6 +47,9 @@ export function useEditorHistory({
 		setSpeedRegions,
 		setAnnotationRegions,
 		setAudioRegions,
+		setEffectAudioVolumes,
+		setEffectAudioStartOverrides,
+		setDisabledEffectAudioIds,
 		setAutoCaptions,
 		setSelectedZoomId,
 		setSelectedClipId,
@@ -69,6 +75,9 @@ export function useEditorHistory({
 			speedRegions,
 			annotationRegions,
 			audioRegions,
+			effectAudioVolumes,
+			effectAudioStartOverrides,
+			disabledEffectAudioIds,
 			autoCaptions,
 			selectedZoomId,
 			selectedClipId,
@@ -81,6 +90,9 @@ export function useEditorHistory({
 			speedRegions,
 			annotationRegions,
 			audioRegions,
+			effectAudioVolumes,
+			effectAudioStartOverrides,
+			disabledEffectAudioIds,
 			autoCaptions,
 			selectedZoomId,
 			selectedClipId,
@@ -97,6 +109,9 @@ export function useEditorHistory({
 			setSpeedRegions(cloned.speedRegions);
 			setAnnotationRegions(cloned.annotationRegions);
 			setAudioRegions(cloned.audioRegions);
+			setEffectAudioVolumes(cloned.effectAudioVolumes ?? {});
+			setEffectAudioStartOverrides(cloned.effectAudioStartOverrides ?? {});
+			setDisabledEffectAudioIds(cloned.disabledEffectAudioIds ?? []);
 			setAutoCaptions(cloned.autoCaptions);
 			setSelectedZoomId(cloned.selectedZoomId);
 			setSelectedClipId(cloned.selectedClipId);
@@ -128,6 +143,7 @@ export function useEditorHistory({
 			setSpeedRegions,
 			setAnnotationRegions,
 			setAudioRegions,
+			setEffectAudioVolumes,
 			setAutoCaptions,
 			setSelectedZoomId,
 			setSelectedClipId,

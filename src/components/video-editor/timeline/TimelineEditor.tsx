@@ -47,7 +47,8 @@ export interface TimelineEditorProps {
 	onZoomSpanChange: (id: string, span: Span) => void;
 	onZoomDelete: (id: string) => void;
 	selectedZoomId: string | null;
-	onSelectZoom: (id: string | null) => void;
+	selectedZoomIds?: string[];
+	onSelectZoom: (id: string | null, additive?: boolean) => void;
 	trimRegions?: TrimRegion[];
 	onTrimSpanChange?: (id: string, span: Span) => void;
 	clipRegions?: ClipRegion[];
@@ -55,7 +56,8 @@ export interface TimelineEditorProps {
 	onClipSpanChange?: (id: string, span: ClipSequenceSpan) => void;
 	onClipDelete?: (id: string) => void;
 	selectedClipId?: string | null;
-	onSelectClip?: (id: string | null) => void;
+	selectedClipIds?: string[];
+	onSelectClip?: (id: string | null, additive?: boolean) => void;
 	annotationRegions?: AnnotationRegion[];
 	onAnnotationAdded?: (span: Span, trackIndex?: number) => void;
 	onAnnotationSpanChange?: (id: string, span: Span, trackIndex?: number) => void;
@@ -65,11 +67,14 @@ export interface TimelineEditorProps {
 	speedRegions?: SpeedRegion[];
 	onSpeedSpanChange?: (id: string, span: Span) => void;
 	audioRegions?: AudioRegion[];
+	effectAudioRegions?: AudioRegion[];
 	onAudioAdded?: (span: Span, audioPath: string, trackIndex?: number) => void;
 	onAudioSpanChange?: (id: string, span: Span, trackIndex?: number) => void;
 	onAudioDelete?: (id: string) => void;
 	selectedAudioId?: string | null;
-	onSelectAudio?: (id: string | null) => void;
+	selectedAudioIds?: string[];
+	onSelectAudio?: (id: string | null, additive?: boolean) => void;
+	onSelectTrackItems?: (kind: "zoom" | "clip" | "audio", ids: string[]) => void;
 	captionRegions?: CaptionCue[];
 	onCaptionSpanChange?: (id: string, span: Span) => void;
 	onCaptionDelete?: (id: string) => void;
@@ -131,6 +136,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			onZoomSpanChange,
 			onZoomDelete,
 			selectedZoomId,
+			selectedZoomIds,
 			onSelectZoom,
 			trimRegions = [],
 			onTrimSpanChange,
@@ -139,6 +145,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			onClipSpanChange,
 			onClipDelete,
 			selectedClipId,
+			selectedClipIds,
 			onSelectClip,
 			annotationRegions = [],
 			onAnnotationAdded,
@@ -149,11 +156,14 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			speedRegions = [],
 			onSpeedSpanChange,
 			audioRegions = [],
+			effectAudioRegions = [],
 			onAudioAdded,
 			onAudioSpanChange,
 			onAudioDelete,
 			selectedAudioId,
+			selectedAudioIds,
 			onSelectAudio,
+			onSelectTrackItems,
 			captionRegions = [],
 			onCaptionSpanChange,
 			onCaptionDelete,
@@ -194,6 +204,8 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 		);
 
 		const timelineContainerRef = useRef<HTMLDivElement>(null);
+		const allAudioRegions = useMemo(() => [...audioRegions, ...effectAudioRegions], [audioRegions, effectAudioRegions]);
+		const horizontalScrollbarRef = useRef<HTMLDivElement>(null);
 		const isTimelineFocusedRef = useRef(false);
 		const { setRange, clampedRange, handleTimelineWheel } = useTimelineRange({
 			totalMs,
@@ -205,6 +217,16 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			const start = Math.max(0, Math.min(currentTimeMs - span / 2, totalMs - span));
 			setRange({ start, end: start + span });
 		};
+		const visibleSpanMs = Math.max(1, clampedRange.end - clampedRange.start);
+		const showHorizontalScrollbar = totalMs > visibleSpanMs + 1;
+		useEffect(() => {
+			const scrollbar = horizontalScrollbarRef.current;
+			if (!scrollbar || !showHorizontalScrollbar) return;
+			const maxScroll = scrollbar.scrollWidth - scrollbar.clientWidth;
+			const maxStart = totalMs - visibleSpanMs;
+			const desired = maxStart > 0 ? (clampedRange.start / maxStart) * maxScroll : 0;
+			if (Math.abs(scrollbar.scrollLeft - desired) > 1) scrollbar.scrollLeft = desired;
+		}, [clampedRange.start, showHorizontalScrollbar, totalMs, visibleSpanMs]);
 
 		const [liveSpanPreviewById, setLiveSpanPreviewById] = useState<Record<string, Span>>({});
 		const [filmstripProgress, setFilmstripProgress] = useState<{ pending: number; completed: number; total: number } | null>(null);
@@ -358,7 +380,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			handleSelectAudio,
 			handleSelectCaption,
 			hasOverlap,
-			timelineItems,
+			timelineItems: editableTimelineItems,
 			allRegionSpans,
 			getResolvedDropRowId,
 			handleItemSpanChange,
@@ -401,7 +423,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			onSelectAnnotation,
 			speedRegions,
 			onSpeedSpanChange,
-			audioRegions,
+			audioRegions: allAudioRegions,
 			onAudioAdded,
 			onAudioSpanChange,
 			onAudioDelete,
@@ -417,6 +439,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			keyShortcuts,
 			isTimelineFocusedRef,
 		});
+		const timelineItems = editableTimelineItems;
 
 		if (!videoDuration || videoDuration === 0) {
 			return (
@@ -516,11 +539,15 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 							onSelectClip={handleSelectClip}
 							onSelectAnnotation={handleSelectAnnotation}
 							onSelectAudio={handleSelectAudio}
+							onSelectTrackItems={onSelectTrackItems}
 							onSelectCaption={handleSelectCaption}
 							selectedZoomId={selectedZoomId}
+							selectedZoomIds={selectedZoomIds}
 							selectedClipId={selectedClipId}
+							selectedClipIds={selectedClipIds}
 							selectedAnnotationId={selectedAnnotationId}
 							selectedAudioId={selectedAudioId}
+							selectedAudioIds={selectedAudioIds}
 							selectedCaptionId={selectedCaptionId}
 							selectAllBlocksActive={selectAllBlocksActive}
 							onClearBlockSelection={clearSelectedBlocks}
@@ -535,6 +562,22 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 						/>
 					</TimelineWrapper>
 				</div>
+				{showHorizontalScrollbar && (
+					<div
+						ref={horizontalScrollbarRef}
+						aria-label={tEditor("playback.timelineScroll", "Scroll timeline")}
+						className="custom-scrollbar h-4 shrink-0 overflow-x-auto overflow-y-hidden"
+						onScroll={(event) => {
+							const scrollbar = event.currentTarget;
+							const maxScroll = scrollbar.scrollWidth - scrollbar.clientWidth;
+							if (maxScroll <= 0) return;
+							const start = (scrollbar.scrollLeft / maxScroll) * (totalMs - visibleSpanMs);
+							if (Math.abs(start - clampedRange.start) > 1) setRange({ start, end: start + visibleSpanMs });
+						}}
+					>
+						<div style={{ width: `${(totalMs / visibleSpanMs) * 100}%`, height: 1 }} />
+					</div>
+				)}
 			</div>
 		);
 	},

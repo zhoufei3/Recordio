@@ -3,6 +3,7 @@ import type { useShortcuts } from "@/contexts/ShortcutsContext";
 import { matchesShortcut } from "@/lib/shortcuts";
 import type { useTimelineState } from "../state/useTimelineState";
 import type { VideoPlaybackRef } from "../VideoPlayback";
+import { isEffectAudioId } from "../effectAudio";
 
 type Input = {
 	timeline: ReturnType<typeof useTimelineState>;
@@ -114,6 +115,7 @@ export function useEditorGlobalInteractions({
 	useEffect(() => {
 		if (
 			timeline.selectedAudioId &&
+			!isEffectAudioId(timeline.selectedAudioId) &&
 			!timeline.audioRegions.some(({ id }) => id === timeline.selectedAudioId)
 		) {
 			timeline.setSelectedAudioId(null);

@@ -1,8 +1,11 @@
+import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
+import presentationModeIcon from "@/assets/icons/presentation-mode.svg";
+import standardModeIcon from "@/assets/icons/standard-mode.svg";
 import {
 	ArrowClockwiseIcon,
 	CaretUpIcon,
-	House,
-	DotsThreeVerticalIcon,
+	HomeAltIcon,
 	MicrophoneIcon,
 	MicrophoneSlashIcon,
 	MinusIcon,
@@ -12,8 +15,6 @@ import {
 	VideoCameraSlashIcon,
 	XIcon,
 } from "@/components/ui/icons";
-import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef } from "react";
 import { Separator } from "@/components/ui/separator";
 import { useScopedT } from "../../contexts/I18nContext";
 import { useMicrophoneDevices } from "../../hooks/useMicrophoneDevices";
@@ -36,9 +37,11 @@ import {
 	useLaunchPopoverCoordinator,
 } from "./popovers/LaunchPopoverCoordinator";
 import { MicPopover } from "./popovers/MicPopover";
+import { RecordingModePopover } from "./popovers/RecordingModePopover";
 import { SourcePopover } from "./popovers/SourcePopover";
 import { WebcamPopover } from "./popovers/WebcamPopover";
 import { RecordingControls } from "./RecordingControls";
+import type { RecordingMode } from "./recordingMode";
 
 export function LaunchWindow() {
 	return (
@@ -50,7 +53,25 @@ export function LaunchWindow() {
 
 function LaunchWindowContent() {
 	const t = useScopedT("launch");
+	const [recordingMode, setRecordingMode] = useState<RecordingMode>(() =>
+		localStorage.getItem("recordly.recording-mode") === "standard" ? "standard" : "editor",
+	);
+	useEffect(() => {
+		localStorage.setItem("recordly.recording-mode", recordingMode);
+	}, [recordingMode]);
 	const { openId, requestOpen } = useLaunchPopoverCoordinator();
+	const [hudVisible, setHudVisible] = useState(false);
+	const hudDismissTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	useEffect(() => {
+		const syncVisibility = () => setHudVisible(document.visibilityState === "visible");
+		syncVisibility();
+		document.addEventListener("visibilitychange", syncVisibility);
+		return () => {
+			document.removeEventListener("visibilitychange", syncVisibility);
+			if (hudDismissTimeoutRef.current) clearTimeout(hudDismissTimeoutRef.current);
+		};
+	}, []);
 
 	const {
 		recording,
@@ -74,7 +95,7 @@ function LaunchWindowContent() {
 		countdownDelay,
 		setCountdownDelay,
 		preparePermissions,
-	} = useScreenRecorder();
+	} = useScreenRecorder(recordingMode);
 
 	const { elapsed, formatTime } = useRecordingTimer(recording, paused);
 	const hudContentRef = useRef<HTMLDivElement>(null);
@@ -83,7 +104,8 @@ function LaunchWindowContent() {
 	const { selectedSource, hasSelectedSource, handleSourceSelect, syncSelectedSource } =
 		useLaunchWindowActions();
 
-	const showWebcamControls = webcamEnabled && !recording;
+	const effectiveWebcamEnabled = recordingMode === "editor" && webcamEnabled;
+	const showWebcamControls = effectiveWebcamEnabled && !recording;
 	const { devices, selectedDeviceId, setSelectedDeviceId } = useMicrophoneDevices(
 		microphoneEnabled || openId === "mic",
 		microphoneDeviceId,
@@ -92,7 +114,7 @@ function LaunchWindowContent() {
 		devices: videoDevices,
 		selectedDeviceId: selectedVideoDeviceId,
 		setSelectedDeviceId: setSelectedVideoDeviceId,
-	} = useVideoDevices(webcamEnabled || openId === "webcam");
+	} = useVideoDevices(recordingMode === "editor" && (webcamEnabled || openId === "webcam"));
 
 	const { hudOverlayMousePassthroughSupported, platform } =
 		useLaunchWindowSystemState(preparePermissions);
@@ -125,7 +147,7 @@ function LaunchWindowContent() {
 		setWebcamPreviewNode,
 		setRecordingWebcamPreviewNode,
 	} = useWebcamPreviewOverlay({
-		webcamEnabled,
+		webcamEnabled: effectiveWebcamEnabled,
 		webcamDeviceId,
 		showWebcamControls,
 		webcamPopoverOpen: openId === "webcam",
@@ -190,6 +212,14 @@ function LaunchWindowContent() {
 		localStorage.setItem("recordly.open-dashboard", String(Date.now()));
 		void window.electronAPI.showProjectDashboard();
 	};
+	const dismissHud = (close = false) => {
+		setHudVisible(false);
+		if (hudDismissTimeoutRef.current) clearTimeout(hudDismissTimeoutRef.current);
+		hudDismissTimeoutRef.current = setTimeout(() => {
+			if (close) window.electronAPI?.hudOverlayClose?.();
+			else window.electronAPI?.hudOverlayHide?.();
+		}, 320);
+	};
 	const homeButton = (
 		<Button
 			variant="ghost"
@@ -199,7 +229,7 @@ function LaunchWindowContent() {
 			title={t("recording.home")}
 			onClick={openHome}
 		>
-			<House weight="fill" className="size-5" />
+			<HomeAltIcon className="size-5" />
 		</Button>
 	);
 
@@ -207,11 +237,12 @@ function LaunchWindowContent() {
 		<RecordingControls
 			onHome={openHome}
 			paused={paused}
+			recordingMode={recordingMode}
 			microphoneEnabled={microphoneEnabled}
 			elapsed={elapsed}
 			onPauseResume={paused ? resumeRecording : pauseRecording}
 			onStopRecording={toggleRecording}
-			onHideHud={() => window.electronAPI?.hudOverlayHide?.()}
+			onHideHud={() => dismissHud()}
 			onCancelRecording={cancelRecording}
 			formatTime={formatTime}
 		/>
@@ -294,8 +325,8 @@ function LaunchWindowContent() {
 			/>
 
 			<WebcamPopover
-				disabled={recording}
-				webcamEnabled={webcamEnabled}
+				disabled={recording || recordingMode === "standard"}
+				webcamEnabled={effectiveWebcamEnabled}
 				onDisableWebcam={() => setWebcamEnabled(false)}
 				canToggleFloatingPreview={canToggleFloatingWebcamPreview(
 					hudOverlayMousePassthroughSupported,
@@ -318,15 +349,17 @@ function LaunchWindowContent() {
 						size="icon"
 						iconSize="lg"
 						title={
-							webcamEnabled
-								? t("recording.disableWebcam")
-								: t("recording.enableWebcam")
+							recordingMode === "standard"
+								? t("recording.webcamUnavailableInStandardMode")
+								: effectiveWebcamEnabled
+									? t("recording.disableWebcam")
+									: t("recording.enableWebcam")
 						}
-						className={webcamEnabled ? "text-accent" : ""}
+						className={effectiveWebcamEnabled ? "text-accent" : ""}
 					>
-						{webcamEnabled ? (
+						{effectiveWebcamEnabled ? (
 							<VideoCameraIcon
-								weight={webcamEnabled ? "fill" : "regular"}
+								weight={effectiveWebcamEnabled ? "fill" : "regular"}
 								className="size-5"
 								size={18}
 							/>
@@ -352,6 +385,32 @@ function LaunchWindowContent() {
 							weight={openId === "countdown" ? "fill" : "regular"}
 							className="size-5"
 						/>
+					</Button>
+				}
+			/>
+
+			<RecordingModePopover
+				mode={recordingMode}
+				onConfirm={setRecordingMode}
+				trigger={
+					<Button
+						variant="ghost"
+						size="sm"
+						className={`${styles.electronNoDrag} gap-1 px-2`}
+						title={t("recording.recordingMode")}
+					>
+						<img
+							className="size-4 shrink-0"
+							src={recordingMode === "editor" ? presentationModeIcon : standardModeIcon}
+							alt=""
+							aria-hidden="true"
+						/>
+						{t(
+							recordingMode === "editor"
+								? "recording.modeEditor"
+								: "recording.modeStandard",
+						)}
+						<CaretUpIcon size={10} className="rotate-180 text-[#6b6b78]" />
 					</Button>
 				}
 			/>
@@ -383,7 +442,7 @@ function LaunchWindowContent() {
 				variant="ghost"
 				size="icon"
 				iconSize="lg"
-				onClick={() => window.electronAPI?.hudOverlayHide?.()}
+				onClick={() => dismissHud()}
 				title={t("recording.hideHud")}
 			>
 				<MinusIcon className="size-5" />
@@ -393,7 +452,7 @@ function LaunchWindowContent() {
 				variant="ghost"
 				size="icon"
 				iconSize="lg"
-				onClick={() => window.electronAPI?.hudOverlayClose?.()}
+				onClick={() => dismissHud(true)}
 				title={t("recording.closeApp")}
 			>
 				<XIcon className="size-5" />
@@ -405,8 +464,24 @@ function LaunchWindowContent() {
 		<div className={styles.finalizingState}>
 			<ArrowClockwiseIcon size={15} className={styles.finalizingSpin} />
 			<div className={styles.finalizingCopy}>
-				<span>{t("recording.preparing", "Preparing recording")}</span>
-				<small>{t("recording.preparingSubtitle", "Opening the editor in a moment")}</small>
+				<span>
+					{t(
+						recordingMode === "standard"
+							? "recording.savingStandard"
+							: "recording.preparing",
+						recordingMode === "standard" ? "Saving recording" : "Preparing recording",
+					)}
+				</span>
+				<small>
+					{t(
+						recordingMode === "standard"
+							? "recording.savingStandardSubtitle"
+							: "recording.preparingSubtitle",
+						recordingMode === "standard"
+							? "Saving video to your recordings folder"
+							: "Opening the editor in a moment",
+					)}
+				</small>
 			</div>
 		</div>
 	);
@@ -421,7 +496,7 @@ function LaunchWindowContent() {
 			value={{ onMouseEnter: handleHudMouseEnter, onMouseLeave: handleHudMouseLeave }}
 		>
 			<div
-				className="w-full flex justify-center bg-transparent overflow-visible items-end pb-5 pointer-events-none"
+				className="w-full flex justify-center bg-transparent overflow-visible items-end pb-[38px] pointer-events-none"
 				style={{ height: "100vh" }}
 			>
 				<div
@@ -438,7 +513,11 @@ function LaunchWindowContent() {
 							<motion.div
 								ref={hudBarRef}
 								layout={shouldAnimateHudLayout}
-								transition={hudStateTransition}
+								initial={{ y: 18 }}
+								animate={{ y: hudVisible ? 0 : 18 }}
+								transition={{ ...hudStateTransition, duration: 2 }}
+								aria-hidden={!hudVisible}
+								style={{ pointerEvents: hudVisible ? "auto" : "none" }}
 								className={`${styles.bar} launch-theme mb-2 pointer-events-auto`}
 								onMouseEnter={handleHudMouseEnter}
 								onMouseLeave={handleHudMouseLeave}
@@ -455,11 +534,25 @@ function LaunchWindowContent() {
 									onPointerUp={handleHudBarPointerUp}
 									onPointerCancel={handleHudBarPointerUp}
 								>
-									<DotsThreeVerticalIcon
-										weight="fill"
-										size={18}
-										className="text-[#6b6b78]"
-									/>
+					<svg
+						width="18"
+						height="18"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						strokeLinecap="round"
+						strokeLinejoin="round"
+						strokeWidth="2"
+						className="text-[#6b6b78]"
+						aria-hidden="true"
+					>
+						<circle cx="9" cy="5" r="1" />
+						<circle cx="9" cy="12" r="1" />
+						<circle cx="9" cy="19" r="1" />
+						<circle cx="15" cy="5" r="1" />
+						<circle cx="15" cy="12" r="1" />
+						<circle cx="15" cy="19" r="1" />
+					</svg>
 								</div>
 
 								<div className={styles.barStateViewport}>

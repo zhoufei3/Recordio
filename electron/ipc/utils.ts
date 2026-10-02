@@ -69,7 +69,8 @@ export function getTelemetryPathForVideo(videoPath: string) {
 }
 
 export function isAutoRecordingPath(filePath: string) {
-	return path.basename(filePath).startsWith(AUTO_RECORDING_PREFIX);
+	const basename = path.basename(filePath);
+	return basename.startsWith(AUTO_RECORDING_PREFIX) || basename.startsWith("recording-");
 }
 
 export async function moveFileWithOverwrite(sourcePath: string, destinationPath: string) {

@@ -137,6 +137,11 @@ interface VideoExporterConfig extends ExportConfig {
 	cameraSpringDampingMultiplier?: number;
 	cameraSpringMassMultiplier?: number;
 	cursorMotionBlur?: number;
+	cursorTrailEnabled?: boolean;
+	cursorTrailSize?: number;
+	cursorTrailLength?: number;
+	cursorTrailDurationMs?: number;
+	cursorTrailColor?: string;
 	cursorClickEffect?: CursorClickEffectStyle;
 	cursorClickEffectColor?: string;
 	cursorClickEffectScale?: number;
@@ -659,6 +664,11 @@ export class ModernVideoExporter {
 					cameraSpringDampingMultiplier: this.config.cameraSpringDampingMultiplier,
 					cameraSpringMassMultiplier: this.config.cameraSpringMassMultiplier,
 					cursorMotionBlur: this.config.cursorMotionBlur,
+					cursorTrailEnabled: this.config.cursorTrailEnabled,
+					cursorTrailSize: this.config.cursorTrailSize,
+					cursorTrailLength: this.config.cursorTrailLength,
+					cursorTrailDurationMs: this.config.cursorTrailDurationMs,
+					cursorTrailColor: this.config.cursorTrailColor,
 					cursorClickEffect: this.config.cursorClickEffect,
 					cursorClickEffectColor: this.config.cursorClickEffectColor,
 					cursorClickEffectScale: this.config.cursorClickEffectScale,

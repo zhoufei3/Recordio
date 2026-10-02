@@ -144,6 +144,9 @@ export function useProjectLifecycle(input: Input) {
 		appearance.setZoomInEasing(editor.zoomInEasing);
 		appearance.setZoomOutEasing(editor.zoomOutEasing);
 		appearance.setConnectedZoomEasing(editor.connectedZoomEasing);
+		appearance.setDefaultZoomSoundId(editor.defaultZoomSoundId);
+		appearance.setDefaultZoomPanSoundId(editor.defaultZoomPanSoundId);
+		appearance.setDefaultZoomOutSoundId(editor.defaultZoomOutSoundId);
 		appearance.setShowCursor(editor.showCursor);
 		appearance.setLoopCursor(editor.loopCursor);
 		appearance.setCursorStyle(editor.cursorStyle);
@@ -166,6 +169,11 @@ export function useProjectLifecycle(input: Input) {
 		appearance.setZoomSmoothness(editor.zoomSmoothness);
 		appearance.setZoomClassicMode(editor.zoomClassicMode);
 		appearance.setCursorMotionBlur(editor.cursorMotionBlur);
+		appearance.setCursorTrailEnabled(editor.cursorTrailEnabled);
+		appearance.setCursorTrailSize(editor.cursorTrailSize);
+		appearance.setCursorTrailLength(editor.cursorTrailLength);
+		appearance.setCursorTrailDurationMs(editor.cursorTrailDurationMs);
+		appearance.setCursorTrailColor(editor.cursorTrailColor);
 		appearance.setCursorClickBounce(editor.cursorClickBounce);
 		appearance.setCursorClickBounceDuration(editor.cursorClickBounceDuration);
 		appearance.setCursorSway(editor.cursorSway);
@@ -185,6 +193,9 @@ export function useProjectLifecycle(input: Input) {
 		timeline.setSpeedRegions(editor.speedRegions);
 		timeline.setAnnotationRegions(editor.annotationRegions);
 		timeline.setAudioRegions(editor.audioRegions);
+		timeline.setEffectAudioVolumes(editor.effectAudioVolumes ?? {});
+		timeline.setEffectAudioStartOverrides(editor.effectAudioStartOverrides ?? {});
+		timeline.setDisabledEffectAudioIds(editor.disabledEffectAudioIds ?? []);
 		timeline.setSourceAudioTrackSettingsByClip(editor.sourceAudioTrackSettingsByClip ?? {});
 		timeline.setDefaultSourceAudioTrackSettings(editor.defaultSourceAudioTrackSettings ?? {});
 		timeline.setAutoCaptions(editor.autoCaptions);
@@ -346,6 +357,7 @@ export function useProjectLifecycle(input: Input) {
 		timeline.setSpeedRegions([]);
 		timeline.setAnnotationRegions([]);
 		timeline.setAudioRegions([]);
+		timeline.setEffectAudioVolumes({});
 		timeline.setCursorTelemetry([]);
 		timeline.setCursorTelemetrySourcePath(null);
 		timeline.setSourceAudioTrackSettingsByClip({});

@@ -18,10 +18,10 @@ interface UseTimelineSelectionParams {
 	onAnnotationDelete?: (id: string) => void;
 	onAudioDelete?: (id: string) => void;
 	onCaptionDelete?: (id: string) => void;
-	onSelectZoom: (id: string | null) => void;
-	onSelectClip?: (id: string | null) => void;
+	onSelectZoom: (id: string | null, additive?: boolean) => void;
+	onSelectClip?: (id: string | null, additive?: boolean) => void;
 	onSelectAnnotation?: (id: string | null) => void;
-	onSelectAudio?: (id: string | null) => void;
+	onSelectAudio?: (id: string | null, additive?: boolean) => void;
 	onSelectCaption?: (id: string | null) => void;
 }
 
@@ -146,19 +146,19 @@ export function useTimelineSelection({
 	}, [onSelectZoom, onSelectClip, onSelectAnnotation, onSelectAudio, onSelectCaption]);
 
 	const handleSelectZoom = useCallback(
-		(id: string | null) => {
+		(id: string | null, additive = false) => {
 			setSelectAllBlocksActive(false);
 			setSelectedKeyframeId(null);
-			onSelectZoom(id);
+			onSelectZoom(id, additive);
 		},
 		[onSelectZoom],
 	);
 
 	const handleSelectClip = useCallback(
-		(id: string | null) => {
+		(id: string | null, additive = false) => {
 			setSelectAllBlocksActive(false);
 			setSelectedKeyframeId(null);
-			onSelectClip?.(id);
+			onSelectClip?.(id, additive);
 		},
 		[onSelectClip],
 	);
@@ -173,10 +173,10 @@ export function useTimelineSelection({
 	);
 
 	const handleSelectAudio = useCallback(
-		(id: string | null) => {
+		(id: string | null, additive = false) => {
 			setSelectAllBlocksActive(false);
 			setSelectedKeyframeId(null);
-			onSelectAudio?.(id);
+			onSelectAudio?.(id, additive);
 		},
 		[onSelectAudio],
 	);

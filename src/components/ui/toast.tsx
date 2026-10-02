@@ -15,6 +15,7 @@ const ids = new Map<string | number, string>();
 
 // Some notifications originate in Electron or older editor hooks without access to React i18n.
 const zhNotifications: Record<string, string> = {
+	"Recording saved": "录制已保存",
 	"Copy": "复制",
 	"Error copied": "错误信息已复制",
 	"Could not copy error": "无法复制错误信息",

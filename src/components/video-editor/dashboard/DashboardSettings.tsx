@@ -6,12 +6,14 @@ import { supportsHudCaptureProtection } from "@/lib/hudCaptureProtection";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { useScopedT } from "@/contexts/I18nContext";
+import donationCode from "@/assets/donation-code.jpg";
 export const DashboardSettingsContext = createContext<ReactNode>(null);
 export function DashboardSettings({ onImportFile }: { onImportFile: () => Promise<void> }) {
 	const t = useScopedT("settings");
 	const settingsContent = useContext(DashboardSettingsContext);
 	const [directory, setDirectory] = useState("");
 	const [recordings, setRecordings] = useState("");
+	const [appVersion, setAppVersion] = useState("—");
 	const [hideHud, setHideHud] = useState(true);
 	const [captureSupported, setCaptureSupported] = useState(false);
 	const [busy, setBusy] = useState(false);
@@ -31,12 +33,14 @@ export function DashboardSettings({ onImportFile }: { onImportFile: () => Promis
 			window.electronAPI.getRecordingsDirectory(),
 			window.electronAPI.getHudOverlayCaptureProtection(),
 			window.electronAPI.getPlatform(),
+			window.electronAPI.getAppVersion().catch(() => "—"),
 		])
-			.then(([directory, protection, platform]) => {
+			.then(([directory, protection, platform, version]) => {
 				if (!active) return;
 				if (directory.success) setRecordings(directory.path);
 				if (protection.success) setHideHud(protection.enabled);
 				setCaptureSupported(supportsHudCaptureProtection(platform));
+				setAppVersion(version);
 			})
 			.catch((error) => toast.error(String(error)));
 		return () => {
@@ -114,6 +118,52 @@ export function DashboardSettings({ onImportFile }: { onImportFile: () => Promis
 					)}
 				</SettingsCategory>
 				<SettingsCategory category="advanced">
+					<SettingsRow
+						title={t("dashboard.resetSettings", "Reset all settings")}
+						description={t(
+							"dashboard.resetSettingsDescription",
+							"Restore software settings to their defaults. Projects, recordings, and media files will be kept.",
+						)}
+					>
+						<Button
+							variant="destructive"
+							size="sm"
+							disabled={busy}
+							onClick={() => {
+								if (
+									!window.confirm(
+										t(
+											"dashboard.resetSettingsConfirm",
+											"Reset all software settings to defaults? Your projects and recordings will not be deleted.",
+										),
+									)
+								)
+									return;
+								void run(async () => {
+									const result = await window.electronAPI.resetAppSettings();
+									if (!result.success)
+										throw Error(
+											result.error ||
+												t("dashboard.resetSettingsFailed", "Could not reset settings"),
+										);
+									for (const key of [
+										"recordly.theme",
+										"recordly.locale",
+										"recordly.editor.preferences",
+										"recordly.editor.presets",
+										"recordly_custom_fonts",
+										"openscreen_custom_fonts",
+										"recordly.recording-mode",
+									]) {
+										localStorage.removeItem(key);
+									}
+									window.location.reload();
+								});
+							}}
+						>
+							{t("dashboard.resetSettings", "Reset all settings")}
+						</Button>
+					</SettingsRow>
 					{import.meta.env.DEV && (
 						<SettingsRow title={t("dashboard.previewUpdateUi", "Preview update UI")}>
 							<Button
@@ -161,8 +211,14 @@ export function DashboardSettings({ onImportFile }: { onImportFile: () => Promis
 				<SettingsCategory category="about">
 					<div className="space-y-4 rounded-2xl border border-border bg-card p-6 text-sm leading-7">
 						<h2 className="text-base font-semibold">{t("about.title", "About Recordio")}</h2>
+						<p className="text-muted-foreground">{t("about.version", "版本")}：{appVersion}</p>
 						<p>{t("about.attribution", "Recordio is an independently modified version of the open-source screen recorder and editor Recordly by webadderall. It is not an official Recordly release.")}</p>
-						<p>{t("about.license", "The original project is licensed under GNU AGPLv3. Copyright © 2026 webadderall. This version retains the applicable copyright and license notices.")}</p>
+						<p>
+							{t("about.cloudDownload", "网盘下载")}{": "}
+							<a className="text-primary underline underline-offset-4" href="https://dub.sh/Recordio" onClick={(event) => { event.preventDefault(); void window.electronAPI.openExternalUrl(event.currentTarget.href); }}>
+								https://dub.sh/Recordio
+							</a>
+						</p>
 						<p>{t("about.maintainer", "Recordio is developed and maintained by Zhou Fei.")}</p>
 						<p>{t("about.starInvitation", "If Recordio helps you, please give my first GitHub project a Star! 🙂")}</p>
 						<p>
@@ -171,6 +227,7 @@ export function DashboardSettings({ onImportFile }: { onImportFile: () => Promis
 								https://github.com/zhoufei3/Recordio
 							</a>
 						</p>
+						<div aria-hidden="true" className="h-px w-full bg-border" />
 						<p>
 							{t("about.repository", "Original repository")}{": "}
 							<a className="text-primary underline underline-offset-4" href="https://github.com/webadderallorg/Recordly" onClick={(event) => { event.preventDefault(); void window.electronAPI.openExternalUrl(event.currentTarget.href); }}>
@@ -183,6 +240,11 @@ export function DashboardSettings({ onImportFile }: { onImportFile: () => Promis
 								GNU AGPLv3
 							</a>
 						</p>
+						<p>{t("about.license", "The original project is licensed under GNU AGPLv3. Copyright © 2026 webadderall. This version retains the applicable copyright and license notices.")}</p>
+						<div className="border-t border-border pt-4">
+							<p className="mb-3">你可以通过以下方式支持我，谢谢。</p>
+							<img className="h-auto w-48 max-w-full rounded-lg" src={donationCode} alt="支付宝赞赏码" />
+						</div>
 					</div>
 				</SettingsCategory>
 			</SettingsSections>

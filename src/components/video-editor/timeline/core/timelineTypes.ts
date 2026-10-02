@@ -41,6 +41,7 @@ export interface TimelineRenderItem {
 	audioPath?: string;
 	audioGain?: number;
 	audioNormalize?: boolean;
+	effectKind?: "click" | "zoom";
 	zoomDepth?: number;
 	zoomMode?: ZoomMode;
 	speedValue?: number;

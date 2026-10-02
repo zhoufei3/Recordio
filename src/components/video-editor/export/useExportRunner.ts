@@ -1,6 +1,6 @@
 import { useCallback, useRef } from "react";
 import { toast } from "@/components/ui/toast";
-import { buildClickSoundRegions } from "../clickSounds";
+import { buildEffectAudioRegions } from "../effectAudio";
 import { getMp4ExportBitrate } from "@/lib/exporter/exportBitrate";
 import { DEFAULT_MP4_CODEC } from "@/lib/exporter/mp4Support";
 import type { ExportSettings } from "@/lib/exporter/types";
@@ -20,6 +20,18 @@ import {
 	showExportErrorToast,
 	useExportSuccessToast,
 } from "./exportRunnerSupport";
+
+function createExportFileName(date: Date, extension: "mp4" | "gif") {
+	const timestamp = [
+		date.getFullYear(),
+		date.getMonth() + 1,
+		date.getDate(),
+		date.getHours(),
+		date.getMinutes(),
+		date.getSeconds(),
+	].join("-");
+	return `Recordio-${timestamp}.${extension}`;
+}
 
 export function useExportRunner(input: ExportRunnerInput) {
 	const inputRef = useRef(input);
@@ -85,7 +97,10 @@ export function useExportRunner(input: ExportRunnerInput) {
 				toast.error("Video not ready");
 				return;
 			}
-			const fileName = `export-${Date.now()}.${settings.format === "gif" ? "gif" : "mp4"}`;
+			const fileName = createExportFileName(
+				new Date(),
+				settings.format === "gif" ? "gif" : "mp4",
+			);
 			let outputPath: string | null = null;
 			if (options?.destination !== "share") {
 				if (smokeExportConfig.enabled && smokeExportConfig.outputPath) {
@@ -340,12 +355,18 @@ export function useExportRunner(input: ExportRunnerInput) {
 						}),
 						audioRegions: [
 							...audioRegions,
-							...buildClickSoundRegions(
-								effectiveCursorTelemetry,
-								clipRegions,
-								appearance.leftClickSound,
-								appearance.rightClickSound,
-							),
+							...buildEffectAudioRegions({
+								telemetry: effectiveCursorTelemetry,
+								clips: clipRegions,
+								zooms: effectiveZoomRegions,
+								leftSound: appearance.leftClickSound,
+								rightSound: appearance.rightClickSound,
+								connectZooms: appearance.connectZooms,
+								zoomInDurationMs: appearance.zoomInDurationMs,
+								volumes: timeline.effectAudioVolumes,
+								startOverrides: timeline.effectAudioStartOverrides,
+								disabledIds: timeline.disabledEffectAudioIds,
+							}),
 						],
 						clipRegions,
 						sourceAudioFallbackPaths: audio.sourceAudioFallbackPaths,

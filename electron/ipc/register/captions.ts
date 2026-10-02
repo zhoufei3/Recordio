@@ -1,5 +1,7 @@
 import path from "node:path";
-import { dialog, ipcMain } from "electron";
+import fs from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { app, dialog, ipcMain } from "electron";
 import { generateAutoCaptionsFromVideo } from "../captions/generate";
 import {
 	deleteWhisperSmallModel,
@@ -20,6 +22,45 @@ type OpenVideoFilePickerOptions = {
 };
 
 export function registerCaptionHandlers() {
+	ipcMain.handle("import-editor-sound", async () => {
+		try {
+			const result = await dialog.showOpenDialog({
+				title: "导入自定义音效",
+				filters: [{ name: "Audio Files", extensions: ["mp3", "wav", "aac", "m4a", "flac", "ogg"] }],
+				properties: ["openFile"],
+			});
+			if (result.canceled || !result.filePaths[0]) return { success: false, canceled: true };
+			const sourcePath = result.filePaths[0];
+			const extension = path.extname(sourcePath).toLowerCase();
+			if (![".mp3", ".wav", ".aac", ".m4a", ".flac", ".ogg"].includes(extension)) {
+				throw new Error("Unsupported audio format");
+			}
+			const directory = path.join(app.getPath("userData"), "custom-sounds");
+			await fs.mkdir(directory, { recursive: true });
+			const filePath = path.join(directory, `${randomUUID()}${extension}`);
+			await fs.copyFile(sourcePath, filePath);
+			approveUserPath(filePath);
+			return { success: true, path: filePath, name: path.basename(sourcePath, extension) };
+		} catch (error) {
+			console.error("Failed to import custom sound:", error);
+			return { success: false, error: String(error) };
+		}
+	});
+	ipcMain.handle("delete-editor-sound", async (_, filePath: unknown) => {
+		try {
+			if (typeof filePath !== "string") throw new Error("Invalid sound path");
+			const directory = path.resolve(app.getPath("userData"), "custom-sounds");
+			const resolved = path.resolve(filePath);
+			if (path.dirname(resolved) !== directory || !/^\S+\.(mp3|wav|aac|m4a|flac|ogg)$/i.test(path.basename(resolved))) {
+				throw new Error("Sound file is outside the custom sounds directory");
+			}
+			await fs.rm(resolved, { force: true });
+			return { success: true };
+		} catch (error) {
+			console.error("Failed to delete custom sound:", error);
+			return { success: false, error: String(error) };
+		}
+	});
 	ipcMain.handle("open-video-file-picker", async (_, options?: OpenVideoFilePickerOptions) => {
 		try {
 			const includeProjects = Boolean(options?.includeProjects);

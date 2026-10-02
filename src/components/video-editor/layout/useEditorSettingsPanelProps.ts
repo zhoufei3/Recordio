@@ -8,6 +8,8 @@ import type { useCaptionCommands } from "../hooks/useCaptionCommands";
 import type { useClipRegionCommands } from "../hooks/useClipRegionCommands";
 import type { useZoomRegionCommands } from "../hooks/useZoomRegionCommands";
 import { SettingsPanel } from "../SettingsPanel";
+import { getEffectAudioVolume, isEffectAudioId } from "../effectAudio";
+import { normalizeZoomSoundId } from "../zoomSounds";
 import type { useAppearanceState } from "../state/useAppearanceState";
 import type { useTimelineState } from "../state/useTimelineState";
 import { type EditorEffectSection, mapTimelineTimeToSourceTime } from "../types";
@@ -75,12 +77,19 @@ export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof
 	const selectedAudio = timeline.audioRegions.find(
 		(region) => region.id === timeline.selectedAudioId,
 	);
+	const selectedAudioIsEffect = isEffectAudioId(timeline.selectedAudioId);
+	const selectedAudioEffectKind = selectedAudioIsEffect
+		? timeline.selectedAudioId?.startsWith("click-sound-") ? "click" as const : "zoom" as const
+		: null;
 
 	const clipAudioReset = useClipAudioReset(timeline);
 
 	return {
 		...clipAudioReset,
 		panelMode: "editor",
+		selectedTrackItemCount: timeline.selectedTrackItems?.ids.includes(
+			timeline.selectedZoomId ?? timeline.selectedClipId ?? timeline.selectedAudioId ?? "",
+		) ? timeline.selectedTrackItems.ids.length : 1,
 		activeEffectSection,
 		selected: appearance.wallpaper,
 		onWallpaperChange: appearance.setWallpaper,
@@ -89,6 +98,32 @@ export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof
 			timeline.selectedZoomId && zoomCommands.handleZoomDepthChange(depth),
 		selectedZoomId: timeline.selectedZoomId,
 		selectedZoomMode: selectedZoom?.mode ?? (timeline.selectedZoomId ? "auto" : null),
+		selectedZoomSoundId: normalizeZoomSoundId(selectedZoom?.soundId),
+		selectedZoomPanSoundId: normalizeZoomSoundId(selectedZoom?.panSoundId),
+		selectedZoomOutSoundId: normalizeZoomSoundId(selectedZoom?.outSoundId),
+		onZoomSoundChange: zoomCommands.handleZoomSoundChange,
+		onZoomPanSoundChange: zoomCommands.handleZoomPanSoundChange,
+		onZoomOutSoundChange: zoomCommands.handleZoomOutSoundChange,
+		onApplyZoomSoundToAll: () => {
+			const soundId = normalizeZoomSoundId(selectedZoom?.soundId ?? appearance.defaultZoomSoundId);
+			const panSoundId = normalizeZoomSoundId(selectedZoom?.panSoundId ?? appearance.defaultZoomPanSoundId);
+			const outSoundId = normalizeZoomSoundId(selectedZoom?.outSoundId ?? appearance.defaultZoomOutSoundId);
+			appearance.setDefaultZoomSoundId(soundId);
+			appearance.setDefaultZoomPanSoundId(panSoundId);
+			appearance.setDefaultZoomOutSoundId(outSoundId);
+			zoomCommands.handleApplyZoomSoundToAll();
+		},
+		onRemoveCustomZoomSound: (id) => {
+			if (appearance.defaultZoomSoundId === id) appearance.setDefaultZoomSoundId("none");
+			if (appearance.defaultZoomPanSoundId === id) appearance.setDefaultZoomPanSoundId("none");
+			if (appearance.defaultZoomOutSoundId === id) appearance.setDefaultZoomOutSoundId("none");
+			timeline.setZoomRegions((regions) => regions.map((region) => ({
+				...region,
+				soundId: region.soundId === id ? "none" : region.soundId,
+				panSoundId: region.panSoundId === id ? "none" : region.panSoundId,
+				outSoundId: region.outSoundId === id ? "none" : region.outSoundId,
+			})));
+		},
 		onZoomModeChange: (mode) =>
 			timeline.selectedZoomId && zoomCommands.handleZoomModeChange(mode),
 		onZoomDelete: zoomCommands.handleZoomDelete,
@@ -99,7 +134,9 @@ export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof
 		onClipMutedChange: clipCommands.handleClipMutedChange,
 		onClipDelete: clipCommands.handleClipDelete,
 		selectedAudioId: timeline.selectedAudioId,
-		selectedAudioVolume: selectedAudio?.volume ?? null,
+		selectedAudioVolume: selectedAudio?.volume ?? (selectedAudioIsEffect && timeline.selectedAudioId
+			? getEffectAudioVolume(timeline.selectedAudioId, timeline.effectAudioVolumes) : null),
+		selectedAudioEffectKind,
 		selectedAudioNormalize:
 			selectedAudio?.normalize ?? (timeline.selectedAudioId ? false : null),
 		onAudioVolumeChange: audioCommands.handleAudioVolumeChange,
@@ -169,7 +206,34 @@ export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof
 		onLeftClickSoundChange: appearance.setLeftClickSound,
 		rightClickSound: appearance.rightClickSound,
 		onRightClickSoundChange: appearance.setRightClickSound,
+		defaultZoomSoundId: appearance.defaultZoomSoundId,
+		defaultZoomPanSoundId: appearance.defaultZoomPanSoundId,
+		defaultZoomOutSoundId: appearance.defaultZoomOutSoundId,
+		onDefaultZoomSoundChange: (id) => {
+			appearance.setDefaultZoomSoundId(id);
+			timeline.setZoomRegions((regions) => regions.map((region) => ({ ...region, soundId: id })));
+		},
+		onDefaultZoomPanSoundChange: (id) => {
+			appearance.setDefaultZoomPanSoundId(id);
+			timeline.setZoomRegions((regions) => regions.map((region) => ({ ...region, panSoundId: id })));
+		},
+		onDefaultZoomOutSoundChange: (id) => {
+			appearance.setDefaultZoomOutSoundId(id);
+			timeline.setZoomRegions((regions) => regions.map((region) => ({ ...region, outSoundId: id })));
+		},
+		deletedClickSoundCount: timeline.disabledEffectAudioIds.filter((id) => id.startsWith("click-sound-")).length,
+		onRestoreDeletedClickSounds: () => timeline.setDisabledEffectAudioIds((ids) => ids.filter((id) => !id.startsWith("click-sound-"))),
 		cursorClickBounce: appearance.cursorClickBounce,
+		cursorTrailEnabled: appearance.cursorTrailEnabled,
+		onCursorTrailEnabledChange: appearance.setCursorTrailEnabled,
+		cursorTrailSize: appearance.cursorTrailSize,
+		onCursorTrailSizeChange: appearance.setCursorTrailSize,
+		cursorTrailLength: appearance.cursorTrailLength,
+		onCursorTrailLengthChange: appearance.setCursorTrailLength,
+		cursorTrailDurationMs: appearance.cursorTrailDurationMs,
+		onCursorTrailDurationMsChange: appearance.setCursorTrailDurationMs,
+		cursorTrailColor: appearance.cursorTrailColor,
+		onCursorTrailColorChange: appearance.setCursorTrailColor,
 		onCursorClickBounceChange: appearance.setCursorClickBounce,
 		cursorClickBounceDuration: appearance.cursorClickBounceDuration,
 		onCursorClickBounceDurationChange: appearance.setCursorClickBounceDuration,

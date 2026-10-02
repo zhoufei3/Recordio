@@ -1,4 +1,6 @@
-import type { RefObject } from "react";
+import { useMemo, type RefObject } from "react";
+import { buildEffectAudioRegions } from "../effectAudio";
+import type { useAppearanceState } from "../state/useAppearanceState";
 import type { useVideoEditorAudio } from "../audio/useVideoEditorAudio";
 import { retimeCaptionFragment } from "../captionTimeline";
 import type { useAnnotationRegionCommands } from "../hooks/useAnnotationRegionCommands";
@@ -15,6 +17,7 @@ type Props = {
 	panelRef?: RefObject<HTMLDivElement | null>;
 	timelineRef: RefObject<TimelineEditorHandle | null>;
 	timeline: ReturnType<typeof useTimelineState>;
+	appearance: ReturnType<typeof useAppearanceState>;
 	projection: ReturnType<typeof useTimelineProjection>;
 	playback: ReturnType<typeof useEditorPlaybackControls>;
 	audio: ReturnType<typeof useVideoEditorAudio>;
@@ -38,6 +41,7 @@ export function EditorTimelinePanel(props: Props) {
 	const {
 		timelineRef,
 		timeline,
+		appearance,
 		projection,
 		playback,
 		audio,
@@ -56,6 +60,44 @@ export function EditorTimelinePanel(props: Props) {
 		currentTime,
 		handleSelectAnnotation,
 	} = props;
+	const firstEffectTrackIndex = useMemo(() =>
+		Math.max(-1, ...timeline.audioRegions.map((region) => region.trackIndex ?? 0)) + 1,
+		[timeline.audioRegions],
+	);
+	const effectAudioRegions = useMemo(() => buildEffectAudioRegions({
+		telemetry: normalizedCursorTelemetry,
+		clips: timeline.clipRegions,
+		zooms: timeline.zoomRegions,
+		leftSound: appearance.leftClickSound,
+		rightSound: appearance.rightClickSound,
+		connectZooms: appearance.connectZooms,
+		zoomInDurationMs: appearance.zoomInDurationMs,
+		volumes: timeline.effectAudioVolumes,
+		startOverrides: timeline.effectAudioStartOverrides,
+		disabledIds: timeline.disabledEffectAudioIds,
+		firstTrackIndex: firstEffectTrackIndex,
+	}), [normalizedCursorTelemetry, timeline.clipRegions, timeline.zoomRegions, timeline.effectAudioVolumes, timeline.effectAudioStartOverrides, timeline.disabledEffectAudioIds,
+		appearance.leftClickSound, appearance.rightClickSound, appearance.connectZooms,
+		appearance.zoomInDurationMs, firstEffectTrackIndex]);
+	const selectTrackItem = (kind: "zoom" | "clip" | "audio", id: string | null, additive = false) => {
+		const current = timeline.selectedTrackItems?.kind === kind ? timeline.selectedTrackItems.ids : [];
+		const ids = !id ? [] : additive
+			? current.includes(id) ? current.filter((itemId) => itemId !== id) : [...current, id]
+			: [id];
+		timeline.setSelectedTrackItems(ids.length ? { kind, ids } : null);
+		const primary = ids.includes(id ?? "") ? id : (ids[ids.length - 1] ?? null);
+		if (kind === "zoom") zoomCommands.handleSelectZoom(primary);
+		if (kind === "clip") clipCommands.handleSelectClip(primary);
+		if (kind === "audio") audioCommands.handleSelectAudio(primary);
+	};
+	const selectTrackItems = (kind: "zoom" | "clip" | "audio", ids: string[]) => {
+		const validIds = [...new Set(ids)];
+		timeline.setSelectedTrackItems(validIds.length ? { kind, ids: validIds } : null);
+		const primary = validIds[validIds.length - 1] ?? null;
+		if (kind === "zoom") zoomCommands.handleSelectZoom(primary);
+		if (kind === "clip") clipCommands.handleSelectClip(primary);
+		if (kind === "audio") audioCommands.handleSelectAudio(primary);
+	};
 
 	return (
 		<div
@@ -84,20 +126,25 @@ export function EditorTimelinePanel(props: Props) {
 				onZoomSpanChange={zoomCommands.handleZoomSpanChange}
 				onZoomDelete={zoomCommands.handleZoomDelete}
 				selectedZoomId={timeline.selectedZoomId}
-				onSelectZoom={zoomCommands.handleSelectZoom}
+				selectedZoomIds={timeline.selectedTrackItems?.kind === "zoom" && timeline.selectedZoomId && timeline.selectedTrackItems.ids.includes(timeline.selectedZoomId) ? timeline.selectedTrackItems.ids : []}
+				onSelectZoom={(id, additive) => selectTrackItem("zoom", id, additive)}
 				trimRegions={timeline.trimRegions}
 				clipRegions={timeline.clipRegions}
 				onClipSplit={clipCommands.handleClipSplit}
 				onClipDelete={clipCommands.handleClipDelete}
 				onClipSpanChange={clipCommands.handleClipSpanChange}
 				selectedClipId={timeline.selectedClipId}
-				onSelectClip={clipCommands.handleSelectClip}
+				selectedClipIds={timeline.selectedTrackItems?.kind === "clip" && timeline.selectedClipId && timeline.selectedTrackItems.ids.includes(timeline.selectedClipId) ? timeline.selectedTrackItems.ids : []}
+				onSelectClip={(id, additive) => selectTrackItem("clip", id, additive)}
 				audioRegions={timeline.audioRegions}
+				effectAudioRegions={effectAudioRegions}
 				onAudioAdded={audioCommands.handleAudioAdded}
 				onAudioSpanChange={audioCommands.handleAudioSpanChange}
 				onAudioDelete={audioCommands.handleAudioDelete}
 				selectedAudioId={timeline.selectedAudioId}
-				onSelectAudio={audioCommands.handleSelectAudio}
+				selectedAudioIds={timeline.selectedTrackItems?.kind === "audio" && timeline.selectedAudioId && timeline.selectedTrackItems.ids.includes(timeline.selectedAudioId) ? timeline.selectedTrackItems.ids : []}
+				onSelectAudio={(id, additive) => selectTrackItem("audio", id, additive)}
+				onSelectTrackItems={selectTrackItems}
 				captionRegions={projection.effectiveCaptionRegions}
 				onCaptionSpanChange={(id, span) => {
 					const fragment = projection.effectiveCaptionRegions.find(

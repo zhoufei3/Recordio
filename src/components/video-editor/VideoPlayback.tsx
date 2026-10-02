@@ -280,6 +280,11 @@ interface VideoPlaybackProps {
 	zoomMotionBlur?: number;
 	zoomMotionBlurTuning?: ZoomMotionBlurTuning;
 	cursorMotionBlur?: number;
+	cursorTrailEnabled?: boolean;
+	cursorTrailSize?: number;
+	cursorTrailLength?: number;
+	cursorTrailDurationMs?: number;
+	cursorTrailColor?: string;
 	cursorClickEffect?: CursorClickEffectStyle;
 	cursorClickEffectColor?: string;
 	cursorClickEffectScale?: number;
@@ -295,6 +300,7 @@ interface VideoPlaybackProps {
 
 export interface VideoPlaybackRef {
 	readonly isPlaying: boolean;
+	readonly timelineTime: number;
 	seekTimeline: (time: number) => void;
 	video: HTMLVideoElement | null;
 	app: Application | null;
@@ -369,6 +375,11 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			zoomMotionBlur = DEFAULT_ZOOM_MOTION_BLUR,
 			zoomMotionBlurTuning = DEFAULT_ZOOM_MOTION_BLUR_TUNING,
 			cursorMotionBlur = DEFAULT_CURSOR_MOTION_BLUR,
+			cursorTrailEnabled = false,
+			cursorTrailSize = 0.65,
+			cursorTrailLength = 12,
+			cursorTrailDurationMs = 360,
+			cursorTrailColor = "#42C97A",
 			cursorClickEffect = DEFAULT_CURSOR_CLICK_EFFECT,
 			cursorClickEffectColor = DEFAULT_CURSOR_CLICK_EFFECT_COLOR,
 			cursorClickEffectScale = DEFAULT_CURSOR_CLICK_EFFECT_SCALE,
@@ -1134,6 +1145,9 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			get isPlaying() {
 				return clipPlaybackRef.current?.isPlaying ?? false;
 			},
+			get timelineTime() {
+				return timelineTimeRef.current;
+			},
 			seekTimeline: (time) => clipPlaybackRef.current?.seek(time),
 			video: videoRef.current,
 			app: appRef.current,
@@ -1839,6 +1853,11 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 							massMultiplier: cursorSpringMassMultiplierRef.current,
 						},
 						motionBlur: cursorMotionBlurRef.current,
+						trailEnabled: cursorTrailEnabled,
+						trailSize: cursorTrailSize,
+						trailLength: cursorTrailLength,
+						trailDurationMs: cursorTrailDurationMs,
+						trailColor: cursorTrailColor,
 						clickEffect: cursorClickEffectRef.current,
 						clickEffectColor: cursorClickEffectColorRef.current,
 						clickEffectScale: cursorClickEffectScaleRef.current,
@@ -2248,6 +2267,13 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 				massMultiplier: cursorSpringMassMultiplier,
 			});
 			overlay.setMotionBlur(cursorMotionBlur);
+			overlay.setTrailOptions({
+				trailEnabled: cursorTrailEnabled,
+				trailSize: cursorTrailSize,
+				trailLength: cursorTrailLength,
+				trailDurationMs: cursorTrailDurationMs,
+				trailColor: cursorTrailColor,
+			});
 			overlay.setClickEffect(cursorClickEffect);
 			overlay.setClickEffectColor(cursorClickEffectColor);
 			overlay.setClickEffectScale(cursorClickEffectScale);
@@ -2288,6 +2314,11 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			cursorSpringDampingMultiplier,
 			cursorSpringMassMultiplier,
 			cursorMotionBlur,
+			cursorTrailEnabled,
+			cursorTrailSize,
+			cursorTrailLength,
+			cursorTrailDurationMs,
+			cursorTrailColor,
 			cursorClickEffect,
 			cursorClickEffectColor,
 			cursorClickEffectScale,

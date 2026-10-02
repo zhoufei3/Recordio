@@ -13,6 +13,9 @@ export type EditorHistorySnapshot = {
 	speedRegions: SpeedRegion[];
 	annotationRegions: AnnotationRegion[];
 	audioRegions: AudioRegion[];
+	effectAudioVolumes?: Record<string, number>;
+	effectAudioStartOverrides?: Record<string, number>;
+	disabledEffectAudioIds?: string[];
 	autoCaptions: CaptionCue[];
 	selectedZoomId: string | null;
 	selectedClipId: string | null;

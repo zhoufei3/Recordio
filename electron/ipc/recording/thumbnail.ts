@@ -20,7 +20,7 @@ export async function getRecordingThumbnail(candidate: string): Promise<string> 
 		throw new Error("Recording is outside the Videos library");
 	const stat = await fs.stat(file);
 	if (!stat.isFile()) throw new Error("Recording is not a file");
-	const key = createHash("sha256").update(`${file}:${stat.mtimeMs}:${stat.size}`).digest("hex");
+	const key = createHash("sha256").update(`project-thumbnail-v2:${file}:${stat.mtimeMs}:${stat.size}`).digest("hex");
 	const existing = pending.get(key);
 	if (existing) return existing;
 	const cache = path.join(app.getPath("userData"), "recording-thumbnails", `${key}.jpg`);
@@ -45,9 +45,9 @@ export async function getRecordingThumbnail(candidate: string): Promise<string> 
 					"1",
 					"-an",
 					"-vf",
-					"scale=160:90:force_original_aspect_ratio=increase,crop=160:90",
+					"scale=640:480:force_original_aspect_ratio=decrease,pad=640:480:(ow-iw)/2:(oh-ih)/2",
 					"-q:v",
-					"5",
+					"2",
 					"-f",
 					"image2pipe",
 					"-c:v",

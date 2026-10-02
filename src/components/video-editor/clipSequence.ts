@@ -89,6 +89,20 @@ export function rippleRegionAnchors<T extends { startMs: number; endMs: number }
 	});
 }
 
+/** Manually moved generated audio cues follow the footage during sequence edits. */
+export function rippleEffectAudioStartOverrides(
+	overrides: Record<string, number>,
+	before: ClipRegion[],
+	after: ClipRegion[],
+): Record<string, number> {
+	return Object.fromEntries(
+		Object.entries(overrides).map(([id, startMs]) => [
+			id,
+			Math.max(0, mapClipSequenceTime(startMs, before, after)),
+		]),
+	);
+}
+
 /** Map the retained footage covered by each connected effect through a sequence edit. */
 export function rippleRegions<T extends { startMs: number; endMs: number }>(
 	regions: T[],

@@ -149,6 +149,11 @@ interface FrameRenderConfig {
 	cameraSpringDampingMultiplier?: number;
 	cameraSpringMassMultiplier?: number;
 	cursorMotionBlur?: number;
+	cursorTrailEnabled?: boolean;
+	cursorTrailSize?: number;
+	cursorTrailLength?: number;
+	cursorTrailDurationMs?: number;
+	cursorTrailColor?: string;
 	cursorClickEffect?: CursorClickEffectStyle;
 	cursorClickEffectColor?: string;
 	cursorClickEffectScale?: number;
@@ -575,6 +580,11 @@ export class FrameRenderer {
 					massMultiplier: this.config.cursorSpringMassMultiplier,
 				},
 				motionBlur: this.config.cursorMotionBlur ?? 0,
+				trailEnabled: this.config.cursorTrailEnabled ?? false,
+				trailSize: this.config.cursorTrailSize ?? 0.65,
+				trailLength: this.config.cursorTrailLength ?? 12,
+				trailDurationMs: this.config.cursorTrailDurationMs ?? 360,
+				trailColor: this.config.cursorTrailColor ?? "#42C97A",
 				clickEffect: this.config.cursorClickEffect ?? DEFAULT_CURSOR_CONFIG.clickEffect,
 				clickEffectColor:
 					this.config.cursorClickEffectColor ?? DEFAULT_CURSOR_CONFIG.clickEffectColor,

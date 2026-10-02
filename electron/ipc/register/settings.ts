@@ -105,6 +105,21 @@ export function registerSettingsHandlers() {
 		}
 	});
 
+	ipcMain.handle("reset-app-settings", async () => {
+		try {
+			writeAppSettingsStore({});
+			await Promise.all([
+				fs.rm(SHORTCUTS_FILE, { force: true }),
+				fs.rm(COUNTDOWN_SETTINGS_FILE, { force: true }),
+				recordingPreferencesStore.reset(),
+			]);
+			return { success: true };
+		} catch (error) {
+			console.error("Failed to reset app settings:", error);
+			return { success: false, error: String(error) };
+		}
+	});
+
 	// ---------------------------------------------------------------------------
 	// Cursor hiding for the browser-capture fallback.
 	// The IPC promise resolves only after the cursor hide attempt completes.
@@ -208,13 +223,17 @@ export function registerSettingsHandlers() {
 		setCountdownRemaining(remaining);
 		setCountdownInProgress(remaining !== null);
 	});
-	ipcMain.handle("start-countdown", (_, seconds: number) => countdown.start(seconds));
+	ipcMain.handle(
+		"start-countdown",
+		(_, seconds: number, mode?: "editor" | "standard") => countdown.start(seconds, mode),
+	);
 	ipcMain.handle("cancel-countdown", () => countdown.cancel());
 
 	ipcMain.handle("get-active-countdown", () => {
 		return {
 			success: true,
 			seconds: countdownInProgress ? countdownRemaining : null,
+			mode: countdownInProgress ? countdown.getActiveMode() : null,
 		};
 	});
 }

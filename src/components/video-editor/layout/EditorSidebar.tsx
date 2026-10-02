@@ -1,6 +1,6 @@
 import { AccountAvatar } from "@/components/ui/account-avatar";
 import type { User } from "@supabase/supabase-js";
-import { Camera, ClosedCaptioning, Cursor, Gear, FrameCorners } from "@/components/ui/icons";
+import { Camera, ClosedCaptioning, Cursor, Gear, FrameCorners, SpeakerHigh } from "@/components/ui/icons";
 import {
 	ToggleButtonGroup,
 	ToggleButton,
@@ -51,6 +51,7 @@ export function EditorSidebar({
 				icon: FrameCorners,
 			},
 			{ id: "cursor" as const, label: t("settings.sections.cursor", "Cursor"), icon: Cursor },
+			{ id: "cursorSound" as const, label: t("settings.sections.cursorSound", "Sound"), icon: SpeakerHigh },
 			{ id: "webcam" as const, label: t("settings.sections.webcam", "Webcam"), icon: Camera },
 			{
 				id: "captions" as const,
@@ -66,7 +67,7 @@ export function EditorSidebar({
 		[t],
 	);
 	return (
-		<div className="flex min-h-0 shrink-0 pb-3 pr-2">
+		<div className="flex min-h-0 shrink-0 gap-2 pb-3 pr-2">
 			<nav
 				aria-label={t("settings.sections.title", "Editor tools")}
 				className="flex w-16 shrink-0 flex-col items-center gap-3 border-r border-separator bg-surface py-2.5"

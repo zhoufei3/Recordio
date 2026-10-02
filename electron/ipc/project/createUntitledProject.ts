@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { formatFilenameTimestamp } from "../../../src/lib/filenameTimestamp";
 /** Publish a complete new project without overwriting a concurrent or existing save. */
 export async function createUntitledProject(directory: string, contents: string) {
 	await fs.mkdir(directory, { recursive: true });
@@ -16,7 +17,7 @@ export async function createUntitledProject(directory: string, contents: string)
 		for (let suffix = 0; ; suffix++) {
 			const target = path.join(
 				directory,
-				`Untitled Project${suffix ? ` ${suffix}` : ""}.recordly`,
+				`Project-${formatFilenameTimestamp()}${suffix ? `-${suffix}` : ""}.recordly`,
 			);
 			try {
 				await fs.link(temporary, target);

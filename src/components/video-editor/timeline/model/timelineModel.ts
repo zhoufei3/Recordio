@@ -30,6 +30,9 @@ export function getAnnotationLabel(region: AnnotationRegion): string {
 }
 
 export function getAudioLabel(region: AudioRegion): string {
+	if (region.label) return region.label;
+	if (region.effectKind === "click") return "鼠标点击音效";
+	if (region.effectKind === "zoom") return "缩放音效";
 	return (
 		region.audioPath
 			.split(/[\\/]/)
@@ -95,6 +98,7 @@ export function buildTimelineItems(params: {
 		audioPath: region.audioPath,
 		audioGain: region.volume,
 		audioNormalize: Boolean(region.normalize),
+		effectKind: region.effectKind,
 		variant: "audio",
 	}));
 

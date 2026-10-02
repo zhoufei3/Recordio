@@ -9,7 +9,7 @@ import {
 import { ClipFilmstrip } from "./components/filmstrip/ClipFilmstrip";
 import type { Span, GetSpanFromDragEvent, GetSpanFromResizeEvent } from "dnd-timeline";
 import { useItem, useTimelineContext } from "dnd-timeline";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef, type PointerEvent } from "react";
 import { useDndMonitor } from "@dnd-kit/core";
 import { useTimelinePresentation } from "./core/TimelinePresentation";
 import { getRegionDisplaySpan, snapRegionSpan } from "./core/clipPresentation";
@@ -39,7 +39,7 @@ interface ItemProps {
 	isSelected?: boolean;
 	onSelect?: () => void;
 	onDoubleClick?: () => void;
-	onSelectId?: (id: string) => void;
+	onSelectId?: (id: string, additive?: boolean) => void;
 	zoomDepth?: number;
 	zoomMode?: "auto" | "manual";
 	speedValue?: number;
@@ -250,9 +250,9 @@ export default function Item({
 							: glassStyles.glassYellow;
 
 	const MIN_ITEM_PX = 6;
-	const handleSelect = () => {
+	const handleSelect = (event: PointerEvent<HTMLDivElement>) => {
 		onSelect?.();
-		onSelectId?.(id);
+		onSelectId?.(id, event.ctrlKey || event.metaKey || event.shiftKey);
 	};
 	const safeItemStyle = {
 		...itemStyle,
@@ -269,6 +269,7 @@ export default function Item({
 			{...listeners}
 			{...attributes}
 			data-timeline-item="true"
+			data-timeline-item-id={id}
 			data-variant={variant}
 			data-start-ms={span.start}
 			data-end-ms={span.end}

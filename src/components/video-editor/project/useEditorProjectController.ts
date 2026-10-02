@@ -150,7 +150,6 @@ export function useEditorProjectController(input: Input) {
 		pendingFreshRecordingAutoZoomPathRef: input.pendingFreshRecordingAutoZoomPathRef,
 		applyLoadedProject: lifecycle.applyLoadedProject,
 		resetSourceScopedEditorState: lifecycle.resetSourceScopedEditorState,
-		applySessionPresentation: input.applySessionPresentation,
 	});
 	useEditorPreferencesPersistence({
 		appearance: input.appearance,

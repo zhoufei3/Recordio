@@ -239,6 +239,23 @@ export const FrameCorners = solar(GalleryLinear, GalleryBold);
 export const Gear = solar(SettingsLinear, SettingsBold);
 export const GearSix = solar(SettingsLinear, SettingsBold);
 export const House = solar(HomeLinear, HomeBold);
+export function HomeAltIcon({ className }: { className?: string }) {
+	return (
+		<svg
+			className={className}
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+			strokeWidth="2"
+			aria-hidden="true"
+		>
+			<path d="M21 19v-6.733a4 4 0 0 0-1.245-2.9L13.378 3.31a2 2 0 0 0-2.755 0L4.245 9.367A4 4 0 0 0 3 12.267V19a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2" />
+			<path d="M9 15a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v6H9z" />
+		</svg>
+	);
+}
 export const Image = solar(GalleryLinear, GalleryBold);
 export const ImageSquare = solar(GalleryLinear, GalleryBold);
 export const Info = solar(InfoCircleLinear, InfoCircleBold);

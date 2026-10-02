@@ -5,6 +5,7 @@ import { changeClipSpan } from "../clipSpanChange";
 import {
 	packClipSequence,
 	reorderClipSequence,
+	rippleEffectAudioStartOverrides,
 	rippleRegionAnchors,
 	rippleRegions,
 } from "../clipSequence";
@@ -22,12 +23,15 @@ type Translator = (
 interface UseClipRegionCommandsParams {
 	setAnnotationRegions: Dispatch<SetStateAction<AnnotationRegion[]>>;
 	setAudioRegions: Dispatch<SetStateAction<AudioRegion[]>>;
+	setEffectAudioStartOverrides: Dispatch<SetStateAction<Record<string, number>>>;
 	sourceDurationMs: number;
 	clipRegions: ClipRegion[];
 	setClipRegions: Dispatch<SetStateAction<ClipRegion[]>>;
 	zoomRegions: ZoomRegion[];
 	setZoomRegions: Dispatch<SetStateAction<ZoomRegion[]>>;
 	selectedClipId: string | null;
+	selectedTrackItems: { kind: "zoom" | "clip" | "audio"; ids: string[] } | null;
+	setSelectedTrackItems: Dispatch<SetStateAction<{ kind: "zoom" | "clip" | "audio"; ids: string[] } | null>>;
 	setSelectedClipId: Dispatch<SetStateAction<string | null>>;
 	setSelectedZoomId: Dispatch<SetStateAction<string | null>>;
 	setSelectedAnnotationId: Dispatch<SetStateAction<string | null>>;
@@ -41,11 +45,14 @@ interface UseClipRegionCommandsParams {
 export function useClipRegionCommands({
 	setAnnotationRegions,
 	setAudioRegions,
+	setEffectAudioStartOverrides,
 	sourceDurationMs,
 	clipRegions,
 	setClipRegions,
 	setZoomRegions,
 	selectedClipId,
+	selectedTrackItems,
+	setSelectedTrackItems,
 	setSelectedClipId,
 	setSelectedZoomId,
 	setSelectedAnnotationId,
@@ -62,9 +69,15 @@ export function useClipRegionCommands({
 			setZoomRegions((current) => rippleRegions(current, clipRegions, next));
 			setAnnotationRegions((current) => rippleRegions(current, clipRegions, next));
 			setAudioRegions((current) => rippleRegionAnchors(current, clipRegions, next));
+			setEffectAudioStartOverrides((current) =>
+				rippleEffectAudioStartOverrides(current, clipRegions, next),
+			);
 		},
-		[clipRegions, setClipRegions, setZoomRegions, setAnnotationRegions, setAudioRegions],
+		[clipRegions, setClipRegions, setZoomRegions, setAnnotationRegions, setAudioRegions, setEffectAudioStartOverrides],
 	);
+
+	const selectedIds = selectedTrackItems?.kind === "clip" && selectedClipId && selectedTrackItems.ids.includes(selectedClipId)
+		? selectedTrackItems.ids : selectedClipId ? [selectedClipId] : [];
 
 	const handleSelectClip = useCallback(
 		(id: string | null) => {
@@ -144,7 +157,7 @@ export function useClipRegionCommands({
 
 			applySequence(
 				clipRegions.map((clip) =>
-					clip.id === selectedClipId
+					selectedIds.includes(clip.id)
 						? {
 								...clip,
 								sourceStartMs: getClipSourceStartMs(clip),
@@ -162,36 +175,40 @@ export function useClipRegionCommands({
 				),
 			);
 		},
-		[clipRegions, selectedClipId, applySequence, t],
+		[clipRegions, selectedClipId, selectedIds, applySequence, t],
 	);
 
 	const handleClipMutedChange = useCallback(
 		(muted: boolean) => {
 			if (!selectedClipId) return;
 			setClipRegions((current) =>
-				current.map((clip) => (clip.id === selectedClipId ? { ...clip, muted } : clip)),
+				current.map((clip) => (selectedIds.includes(clip.id) ? { ...clip, muted } : clip)),
 			);
 		},
-		[selectedClipId, setClipRegions],
+		[selectedClipId, selectedIds, setClipRegions],
 	);
 	const handleClipShowSourceAudioChange = useCallback(
 		(showSourceAudio: boolean) => {
 			if (!selectedClipId) return;
 			setClipRegions((current) =>
 				current.map((clip) =>
-					clip.id === selectedClipId ? { ...clip, showSourceAudio } : clip,
+					selectedIds.includes(clip.id) ? { ...clip, showSourceAudio } : clip,
 				),
 			);
 		},
-		[selectedClipId, setClipRegions],
+		[selectedClipId, selectedIds, setClipRegions],
 	);
 
 	const handleClipDelete = useCallback(
 		(id: string) => {
-			applySequence(clipRegions.filter((clip) => clip.id !== id));
-			if (selectedClipId === id) setSelectedClipId(null);
+			const ids = selectedIds.includes(id) ? selectedIds : [id];
+			applySequence(clipRegions.filter((clip) => !ids.includes(clip.id)));
+			if (selectedClipId && ids.includes(selectedClipId)) {
+				setSelectedClipId(null);
+				setSelectedTrackItems(null);
+			}
 		},
-		[clipRegions, selectedClipId, applySequence, setSelectedClipId],
+		[clipRegions, selectedIds, selectedClipId, applySequence, setSelectedClipId, setSelectedTrackItems],
 	);
 
 	return {

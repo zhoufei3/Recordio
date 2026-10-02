@@ -1,11 +1,14 @@
 import { fixWebmDuration } from "@fix-webm-duration/fix";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { RecordingMode } from "@/components/launch/recordingMode";
 import { toast } from "@/components/ui/toast";
+import { formatFilenameTimestamp } from "@/lib/filenameTimestamp";
 import { getEffectiveRecordingDurationMs } from "@/lib/mediaTiming";
 import {
 	getVideoExtensionForMimeType,
 	isWebmMimeType,
 	selectRecordingMimeType,
+	selectStandardRecordingMimeType,
 	selectWebcamRecordingMimeType,
 } from "./recordingMimeType";
 
@@ -28,7 +31,6 @@ const RECORDER_TIMESLICE_MS = 250;
 const BITS_PER_MEGABIT = 1_000_000;
 const MIN_FRAME_RATE = 30;
 const CHROME_MEDIA_SOURCE = "desktop";
-const RECORDING_FILE_PREFIX = "recording-";
 const AUDIO_BITRATE_VOICE = 128_000;
 const AUDIO_BITRATE_SYSTEM = 192_000;
 const MIC_GAIN_BOOST = 1.4;
@@ -190,9 +192,19 @@ export function normalizeBrowserMicrophoneProfile(value?: string | null): Browse
 
 export function resolveBrowserCaptureCursorPolicy({
 	nativeWindowsCaptureStartFailed = false,
+	captureCursorTelemetry = true,
 }: {
 	nativeWindowsCaptureStartFailed?: boolean;
+	captureCursorTelemetry?: boolean;
 } = {}): BrowserCaptureCursorPolicy {
+	if (!captureCursorTelemetry) {
+		return {
+			streamCursor: "always",
+			hideOsCursorBeforeRecording: false,
+			hideEditorOverlayCursorByDefault: false,
+		};
+	}
+
 	if (nativeWindowsCaptureStartFailed) {
 		// If WGC already failed, avoid the telemetry overlay path that can lag on
 		// constrained Windows systems; keep the browser-captured cursor instead.
@@ -373,7 +385,9 @@ async function createAudioInputDeviceSnapshot(): Promise<
 	return audioInputs.length > 0 ? audioInputs : null;
 }
 
-export function useScreenRecorder(): UseScreenRecorderReturn {
+export function useScreenRecorder(
+	recordingMode: RecordingMode = "editor",
+): UseScreenRecorderReturn {
 	const [recording, setRecording] = useState(false);
 	const [paused, setPaused] = useState(false);
 	const [starting, setStarting] = useState(false);
@@ -588,8 +602,10 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 	}, []);
 
 	const selectMimeType = useCallback(() => {
-		return selectRecordingMimeType();
-	}, []);
+		return recordingMode === "standard"
+			? selectStandardRecordingMimeType()
+			: selectRecordingMimeType();
+	}, [recordingMode]);
 
 	const selectWebcamMimeType = useCallback(() => {
 		return selectWebcamRecordingMimeType();
@@ -767,7 +783,11 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			}
 
 			setFinalizing(false);
-			await window.electronAPI.switchToEditor();
+			await window.electronAPI.switchToEditor({
+				videoPath,
+				webcamPath,
+				timeOffsetMs: webcamTimeOffsetMs.current,
+			});
 			console.log(
 				`[PERF:RENDERER] Finalize Session & Switch to Editor: COMPLETED in ${(performance.now() - start).toFixed(2)}ms`,
 			);
@@ -1059,7 +1079,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			recorder.onstop = async () => {
 				const sessionTimestamp = recordingSessionTimestamp.current ?? Date.now();
 				const webcamMimeType = recorder.mimeType || mimeType;
-				const webcamFileName = `${RECORDING_FILE_PREFIX}${sessionTimestamp}${WEBCAM_SUFFIX}${getVideoExtensionForMimeType(webcamMimeType)}`;
+				const webcamFileName = `Recording-${formatFilenameTimestamp(sessionTimestamp)}${WEBCAM_SUFFIX}${getVideoExtensionForMimeType(webcamMimeType)}`;
 
 				try {
 					if (webcamChunks.current.length === 0) {
@@ -1151,9 +1171,12 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 
 		recordingSessionTimestamp.current = Date.now();
 		resetRecordingClock(recordingSessionTimestamp.current);
-		await prepareWebcamRecorder();
+		if (recordingMode === "editor") {
+			await prepareWebcamRecorder();
+		}
 
 		const useNativeMacScreenCapture =
+			recordingMode === "editor" &&
 			platform === "darwin" &&
 			(selectedSource.id?.startsWith("screen:") ||
 				selectedSource.id?.startsWith("window:")) &&
@@ -1161,6 +1184,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 
 		let useNativeWindowsCapture = false;
 		if (
+			recordingMode === "editor" &&
 			platform === "win32" &&
 			shouldUseNativeWindowsCaptureForSource(selectedSource) &&
 			typeof window.electronAPI.isNativeWindowsCaptureAvailable === "function"
@@ -1213,6 +1237,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 		microphoneEnabled,
 		preparePermissions,
 		prepareWebcamRecorder,
+		recordingMode,
 		resetRecordingClock,
 	]);
 
@@ -1695,7 +1720,10 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			if (countdownDelay > 0 && !shouldWarmStartNativeCapture) {
 				setCountdownActive(true);
 				try {
-					const result = await window.electronAPI.startCountdown(countdownDelay);
+					const result = await window.electronAPI.startCountdown(
+						countdownDelay,
+						recordingMode,
+					);
 					if (!result.success || result.cancelled || startWasCancelled()) {
 						cleanupCapturedMedia();
 						await stopWebcamRecorder();
@@ -1777,7 +1805,10 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 						setCountdownActive(true);
 						try {
 							const countdownResult =
-								await window.electronAPI.startCountdown(countdownDelay);
+								await window.electronAPI.startCountdown(
+									countdownDelay,
+									recordingMode,
+								);
 							if (
 								!countdownResult.success ||
 								countdownResult.cancelled ||
@@ -1893,7 +1924,10 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 
 					setRecording(true);
 					try {
-						await window.electronAPI?.setRecordingState(true);
+						await window.electronAPI?.setRecordingState(
+							true,
+							recordingMode === "editor",
+						);
 					} catch (stateError) {
 						console.warn(
 							"Failed to notify main process that native recording started:",
@@ -1908,7 +1942,10 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			if (nativeWindowsCaptureStartFailed && countdownDelay > 0) {
 				setCountdownActive(true);
 				try {
-					const result = await window.electronAPI.startCountdown(countdownDelay);
+					const result = await window.electronAPI.startCountdown(
+						countdownDelay,
+						recordingMode,
+					);
 					if (!result.success || result.cancelled) {
 						cleanupCapturedMedia();
 						await stopWebcamRecorder();
@@ -1923,6 +1960,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 
 			const browserCursorPolicy = resolveBrowserCaptureCursorPolicy({
 				nativeWindowsCaptureStartFailed,
+				captureCursorTelemetry: recordingMode === "editor",
 			});
 			hideEditorOverlayCursorByDefault.current =
 				browserCursorPolicy.hideEditorOverlayCursorByDefault;
@@ -2176,7 +2214,7 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 				);
 				chunks.current = [];
 				const timestamp = recordingSessionTimestamp.current ?? Date.now();
-				const videoFileName = `${RECORDING_FILE_PREFIX}${timestamp}${getVideoExtensionForMimeType(recordingBlobType)}`;
+				const videoFileName = `Recording-${formatFilenameTimestamp(timestamp)}${getVideoExtensionForMimeType(recordingBlobType)}`;
 
 				try {
 					const videoBlob = isWebmMimeType(recordingBlobType)
@@ -2186,6 +2224,8 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 					const videoResult = await window.electronAPI.storeRecordedVideo(
 						arrayBuffer,
 						videoFileName,
+						recordingMode === "editor",
+						recordingMode === "standard" && isWebmMimeType(recordingBlobType),
 					);
 					if (!videoResult.success) {
 						console.error("Failed to store video:", videoResult.message);
@@ -2197,6 +2237,28 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 
 					if (videoResult.path) {
 						const finalVideoPath = videoResult.path;
+						if (recordingMode === "standard") {
+							setFinalizing(false);
+							void window.electronAPI
+								.revealInFolder(finalVideoPath)
+								.then((result) => {
+									if (!result.success) {
+									console.warn("Could not open the recording folder:", result.error);
+								}
+								})
+								.catch((error) =>
+									console.warn("Could not open the recording folder:", error),
+								);
+							toast.success("Recording saved", {
+								description: finalVideoPath,
+								action: {
+									label: "Show in Folder",
+									onClick: () =>
+										void window.electronAPI.revealInFolder(finalVideoPath),
+								},
+							});
+							return;
+						}
 						// 1. Launch editor immediately (Optimistic UI)
 						await finalizeRecordingSession(finalVideoPath, null);
 
@@ -2249,7 +2311,10 @@ export function useScreenRecorder(): UseScreenRecorderReturn {
 			recorder.start(RECORDER_TIMESLICE_MS);
 			setRecording(true);
 			try {
-				await window.electronAPI?.setRecordingState(true);
+				await window.electronAPI?.setRecordingState(
+					true,
+					recordingMode === "editor",
+				);
 			} catch (stateError) {
 				console.warn("Failed to notify main process that recording started:", stateError);
 			}

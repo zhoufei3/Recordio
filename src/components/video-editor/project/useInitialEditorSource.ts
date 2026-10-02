@@ -7,11 +7,6 @@ import type { useProjectState } from "../state/useProjectState";
 import type { useTimelineState } from "../state/useTimelineState";
 import { DEFAULT_WEBCAM_TIME_OFFSET_MS } from "../types";
 
-type SessionPresentation = {
-	hideOverlayCursorByDefault?: boolean;
-	nativeCaptureUnavailable?: boolean;
-};
-
 type Input = {
 	project: ReturnType<typeof useProjectState>;
 	appearance: ReturnType<typeof useAppearanceState>;
@@ -22,7 +17,6 @@ type Input = {
 	pendingFreshRecordingAutoZoomPathRef: MutableRefObject<string | null>;
 	applyLoadedProject: (candidate: unknown, path?: string | null) => Promise<boolean>;
 	resetSourceScopedEditorState: () => void;
-	applySessionPresentation: (session: SessionPresentation | null | undefined) => void;
 };
 
 export function useInitialEditorSource({
@@ -35,7 +29,6 @@ export function useInitialEditorSource({
 	pendingFreshRecordingAutoZoomPathRef,
 	applyLoadedProject,
 	resetSourceScopedEditorState,
-	applySessionPresentation,
 }: Input) {
 	const initialLoadStartedRef = useRef(false);
 
@@ -147,59 +140,38 @@ export function useInitialEditorSource({
 					return;
 				}
 
-				const currentProject = await window.electronAPI.loadCurrentProjectFile();
-				if (
-					currentProject.success &&
-					currentProject.project &&
-					(await applyLoadedProject(currentProject.project, currentProject.path ?? null))
-				) {
-					return;
-				}
-
-				const sessionResult = await window.electronAPI.getCurrentRecordingSession?.();
-				if (sessionResult?.success && sessionResult.session?.videoPath) {
-					const sourcePath = fromFileUrl(sessionResult.session.videoPath);
+				const recordingLaunch = await window.electronAPI.consumeRecordingEditorLaunch?.();
+				if (recordingLaunch) {
+					const sourcePath = fromFileUrl(recordingLaunch.videoPath);
+					if (!sourcePath) throw new Error("The completed recording could not be found.");
+					const webcamPath = recordingLaunch.webcamPath
+						? fromFileUrl(recordingLaunch.webcamPath)
+						: null;
 					const sourceUrl = await resolveVideoUrl(sourcePath);
 					project.setVideoSourcePath(sourcePath);
 					project.setVideoPath(sourceUrl);
 					project.setCurrentProjectPath(null);
 					project.setLastSavedSnapshot(null);
+					project.setProjectBrowserOpen(false);
 					resetSourceScopedEditorState();
 					pendingFreshRecordingAutoZoomPathRef.current =
 						appearance.autoApplyFreshRecordingAutoZooms ? sourceUrl : null;
-					applySessionPresentation(sessionResult.session);
 					appearance.setWebcam((previous) => ({
 						...previous,
 						visibleRanges: undefined,
-						enabled: Boolean(sessionResult.session?.webcamPath),
-						sourcePath: sessionResult.session?.webcamPath ?? null,
-						timeOffsetMs:
-							sessionResult.session?.timeOffsetMs ?? DEFAULT_WEBCAM_TIME_OFFSET_MS,
+						enabled: Boolean(webcamPath),
+						sourcePath: webcamPath,
+						timeOffsetMs: webcamPath
+							? (recordingLaunch.timeOffsetMs ?? DEFAULT_WEBCAM_TIME_OFFSET_MS)
+							: DEFAULT_WEBCAM_TIME_OFFSET_MS,
 					}));
+					project.setError(null);
 					return;
 				}
 
-				const currentVideo = await window.electronAPI.getCurrentVideoPath();
-				if (!currentVideo.success || !currentVideo.path) {
-					// An empty session is the normal dashboard launch, not a load failure.
-					project.setProjectBrowserOpen(true);
-					return;
-				}
-				const sourcePath = fromFileUrl(currentVideo.path);
-				project.setVideoSourcePath(sourcePath);
-				project.setVideoPath(await resolveVideoUrl(sourcePath));
-				project.setCurrentProjectPath(null);
-				project.setLastSavedSnapshot(null);
-				resetSourceScopedEditorState();
-				pendingFreshRecordingAutoZoomPathRef.current = null;
-				applySessionPresentation(null);
-				appearance.setWebcam((previous) => ({
-					...previous,
-					visibleRanges: undefined,
-					enabled: false,
-					sourcePath: null,
-					timeOffsetMs: DEFAULT_WEBCAM_TIME_OFFSET_MS,
-				}));
+				// Normal launches always land on the project library. Restoring a previous
+				// project or recording session must be an explicit user action.
+				project.setProjectBrowserOpen(true);
 			} catch (error) {
 				project.setError(`Error loading video: ${String(error)}`);
 			} finally {
@@ -209,7 +181,6 @@ export function useInitialEditorSource({
 		void loadInitialData();
 	}, [
 		applyLoadedProject,
-		applySessionPresentation,
 		devConfig,
 		resetSourceScopedEditorState,
 		smokeConfig,

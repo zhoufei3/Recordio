@@ -5,6 +5,7 @@ import path from "node:path";
 import type { Readable, Writable } from "node:stream";
 import type { SaveDialogOptions } from "electron";
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import { readAppSettingsStore, writeAppSettingsStore } from "../../appSettingsStore";
 import {
 	closeExportStream,
 	isOwnedExportPath,
@@ -60,6 +61,30 @@ function getPartialExportDestinationPath(destinationPath: string) {
 }
 
 const MAX_IN_MEMORY_EXPORT_BYTES = 0x7fffffff;
+const LAST_EXPORT_DIRECTORY_SETTING = "lastExportDirectory";
+
+async function getExportDefaultPath(fileName: string) {
+	const savedDirectory = readAppSettingsStore()[LAST_EXPORT_DIRECTORY_SETTING];
+	if (typeof savedDirectory === "string" && path.isAbsolute(savedDirectory)) {
+		try {
+			await fs.access(savedDirectory);
+			return path.join(savedDirectory, path.basename(fileName));
+		} catch {
+			// The previously selected folder may have been moved or removed.
+		}
+	}
+	return path.join(app.getPath("downloads"), path.basename(fileName));
+}
+
+function rememberExportDirectory(filePath: string) {
+	try {
+		const settings = readAppSettingsStore();
+		settings[LAST_EXPORT_DIRECTORY_SETTING] = path.dirname(filePath);
+		writeAppSettingsStore(settings);
+	} catch (error) {
+		console.warn("Could not remember the export folder:", error);
+	}
+}
 
 function getInMemoryExportTooLargeMessage(byteLength: number) {
 	if (byteLength <= MAX_IN_MEMORY_EXPORT_BYTES) {
@@ -257,7 +282,7 @@ export function registerExportHandlers() {
 		const isGif = fileName.toLowerCase().endsWith(".gif");
 		const options: SaveDialogOptions = {
 			title: isGif ? "Save Exported GIF" : "Save Exported Video",
-			defaultPath: path.join(app.getPath("downloads"), path.basename(fileName)),
+			defaultPath: await getExportDefaultPath(fileName),
 			filters: isGif
 				? [{ name: "GIF Image", extensions: ["gif"] }]
 				: [{ name: "MP4 Video", extensions: ["mp4"] }],
@@ -267,7 +292,9 @@ export function registerExportHandlers() {
 		const result = parent
 			? await dialog.showSaveDialog(parent, options)
 			: await dialog.showSaveDialog(options);
-		return result.canceled ? null : result.filePath ?? null;
+		if (result.canceled || !result.filePath) return null;
+		rememberExportDirectory(result.filePath);
+		return result.filePath;
 	});
 	ipcMain.handle(
 		"native-video-export-start",
@@ -903,7 +930,7 @@ export function registerExportHandlers() {
 				const parentWindow = BrowserWindow.fromWebContents(event.sender);
 				const saveDialogOptions: SaveDialogOptions = {
 					title: isGif ? "Save Exported GIF" : "Save Exported Video",
-					defaultPath: path.join(app.getPath("downloads"), fileName),
+					defaultPath: await getExportDefaultPath(fileName),
 					filters,
 					properties: ["createDirectory", "showOverwriteConfirmation"],
 				};
@@ -919,6 +946,7 @@ export function registerExportHandlers() {
 						message: "Export canceled",
 					};
 				}
+				rememberExportDirectory(result.filePath);
 
 				await fs.writeFile(result.filePath, Buffer.from(videoData));
 				const captionSidecarResult = await writeCaptionSidecarsBestEffort(
@@ -1058,7 +1086,7 @@ export function registerExportHandlers() {
 				const parentWindow = BrowserWindow.fromWebContents(event.sender);
 				const saveDialogOptions: SaveDialogOptions = {
 					title: isGif ? "Save Exported GIF" : "Save Exported Video",
-					defaultPath: path.join(app.getPath("downloads"), fileName),
+					defaultPath: await getExportDefaultPath(fileName),
 					filters,
 					properties: ["createDirectory", "showOverwriteConfirmation"],
 				};
@@ -1076,6 +1104,7 @@ export function registerExportHandlers() {
 						message: "Export canceled",
 					};
 				}
+				rememberExportDirectory(result.filePath);
 
 				await moveExportedTempFile(tempPath, result.filePath);
 				releaseOwnedExportPath(tempPath);

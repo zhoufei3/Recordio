@@ -76,6 +76,8 @@ export function useTimelineRange({ totalMs, timelineContainerRef }: UseTimelineR
 
 	const handleTimelineWheel = useCallback(
 		(event: WheelEvent<HTMLDivElement>) => {
+			// Keep the vertical track scrollbar under direct drag control only.
+			event.preventDefault();
 			if (totalMs <= 0) {
 				return;
 			}

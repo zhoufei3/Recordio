@@ -24,6 +24,7 @@ type Props = {
 	aspectRatio: AspectRatio;
 	playbackRef: RefObject<VideoPlaybackRef | null>;
 	currentTime: number;
+	timelineTime: number;
 	isPlaying: boolean;
 	previewVolume: number;
 	suspendRendering: boolean;
@@ -47,6 +48,7 @@ export function EditorVideoPreview({
 	aspectRatio,
 	playbackRef,
 	currentTime,
+	timelineTime,
 	isPlaying,
 	previewVolume,
 	suspendRendering,
@@ -66,11 +68,18 @@ export function EditorVideoPreview({
 	useClickSoundPreview({
 		telemetry: effectiveCursorTelemetry,
 		clips: timeline.clipRegions,
+		zooms: effectiveZoomRegions,
+		connectZooms: appearance.connectZooms,
+		zoomInDurationMs: appearance.zoomInDurationMs,
+		effectAudioVolumes: timeline.effectAudioVolumes,
+		effectAudioStartOverrides: timeline.effectAudioStartOverrides,
+		disabledEffectAudioIds: timeline.disabledEffectAudioIds,
 		leftSound: appearance.leftClickSound,
 		rightSound: appearance.rightClickSound,
-		currentTime,
+		currentTime: timelineTime,
 		isPlaying,
 		volume: previewVolume,
+		playbackRef,
 	});
 	return (
 		<VideoPlayback
@@ -130,6 +139,11 @@ export function EditorVideoPreview({
 			zoomMotionBlur={appearance.zoomMotionBlur}
 			zoomMotionBlurTuning={appearance.zoomMotionBlurTuning}
 			cursorMotionBlur={appearance.cursorMotionBlur}
+			cursorTrailEnabled={appearance.cursorTrailEnabled}
+			cursorTrailSize={appearance.cursorTrailSize}
+			cursorTrailLength={appearance.cursorTrailLength}
+			cursorTrailDurationMs={appearance.cursorTrailDurationMs}
+			cursorTrailColor={appearance.cursorTrailColor}
 			cursorClickEffect={appearance.cursorClickEffect}
 			cursorClickEffectColor={appearance.cursorClickEffectColor}
 			cursorClickEffectScale={appearance.cursorClickEffectScale}

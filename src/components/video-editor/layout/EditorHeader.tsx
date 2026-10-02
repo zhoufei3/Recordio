@@ -1,10 +1,7 @@
-import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
 import { Separator } from "@heroui/react";
 import {
 	House,
 	FilmStrip,
-	ArrowClockwise as Redo2,
-	ArrowCounterClockwise as Undo2,
 } from "@/components/ui/icons";
 import type { CSSProperties, FormEvent, RefObject } from "react";
 import { Button } from "@/components/ui/button";
@@ -31,11 +28,7 @@ type Props = {
 	projectNameInputRef: RefObject<HTMLInputElement | null>;
 	projectDisplayName: string;
 	hasUnsavedChanges: boolean;
-	canUndo: boolean;
-	canRedo: boolean;
 	handleOpenProjectBrowser: () => void;
-	handleUndo: () => void;
-	handleRedo: () => void;
 	handleProjectNameSubmit: (event?: FormEvent<HTMLFormElement>) => void;
 	closeProjectNameEditor: () => void;
 	presets: ReturnType<typeof useVideoEditorPresets>;
@@ -69,11 +62,7 @@ export function EditorHeader(props: Props) {
 		projectNameInputRef,
 		projectDisplayName,
 		hasUnsavedChanges,
-		canUndo,
-		canRedo,
 		handleOpenProjectBrowser,
-		handleUndo,
-		handleRedo,
 		handleProjectNameSubmit,
 		closeProjectNameEditor,
 		presets,
@@ -202,33 +191,7 @@ export function EditorHeader(props: Props) {
 				className="editor-header-end flex min-w-0 items-center justify-self-end gap-3"
 				style={{ WebkitAppRegion: "no-drag" } as CSSProperties}
 			>
-				<div className="flex items-center gap-1">
-					<Separator orientation="vertical" className="mx-3 h-5 shrink-0 self-center" />
-					<Button
-						type="button"
-						variant="ghost"
-						onClick={handleUndo}
-						disabled={!canUndo}
-						className="inline-flex h-9 w-9 min-w-9 items-center justify-center p-0 disabled:cursor-not-allowed"
-						title={t("common.actions.undo", "Undo")}
-						aria-label={t("common.actions.undo", "Undo")}
-					>
-						<Undo2 className="h-4 w-4" />
-					</Button>
-					<Button
-						type="button"
-						variant="ghost"
-						onClick={handleRedo}
-						disabled={!canRedo}
-						className="inline-flex h-9 w-9 min-w-9 items-center justify-center p-0 disabled:cursor-not-allowed"
-						title={t("common.actions.redo", "Redo")}
-						aria-label={t("common.actions.redo", "Redo")}
-					>
-						<Redo2 className="h-4 w-4" />
-					</Button>
-				</div>
 				{SHOW_PRESETS_BUTTON && <EditorPresetMenu t={t} presets={presets} />}
-				<FeedbackDialog />
 				<EditorExportMenu
 					t={t}
 					exportSettings={exportSettings}

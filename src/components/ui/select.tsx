@@ -66,10 +66,12 @@ export function SelectItem({
 	value,
 	disabled,
 	children,
+	endAction,
 	...props
 }: Omit<
 	Omit<ComponentProps<typeof ListBox.Item>, "children"> & {
 		children?: import("react").ReactNode;
+		endAction?: import("react").ReactNode;
 	},
 	"id"
 > & { value: string; disabled?: boolean }) {
@@ -80,7 +82,21 @@ export function SelectItem({
 			textValue={props.textValue ?? (typeof children === "string" ? children : value)}
 			isDisabled={disabled}
 		>
-			{children}
+			{endAction ? (
+				<div className="flex w-full min-w-0 items-center justify-between gap-2">
+					<span className="min-w-0 flex-1 truncate">{children}</span>
+					<span
+						className="shrink-0"
+						onPointerDown={(event) => {
+							event.preventDefault();
+							event.stopPropagation();
+						}}
+						onClick={(event) => event.stopPropagation()}
+					>
+						{endAction}
+					</span>
+				</div>
+			) : children}
 			<ListBox.ItemIndicator />
 		</ListBox.Item>
 	);

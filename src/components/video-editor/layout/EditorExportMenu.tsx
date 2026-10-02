@@ -121,10 +121,10 @@ export function EditorExportMenu(props: Props) {
 				<PopoverTrigger asChild>
 					<Button
 						type="button"
-						className="inline-flex h-9 min-w-[104px] items-center justify-center gap-2 px-4.5"
+						className="inline-flex h-9 min-w-[104px] items-center justify-center gap-2 px-4.5 leading-none"
 					>
 						<Download className="h-4 w-4" />
-						<span className="text-sm font-semibold tracking-tight">
+						<span className="inline-flex h-full items-center text-sm font-semibold leading-none tracking-tight">
 							{t("common.actions.export", "Export")}
 						</span>
 					</Button>

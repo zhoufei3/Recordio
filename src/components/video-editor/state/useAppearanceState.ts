@@ -35,6 +35,9 @@ export function useAppearanceState(preferences: EditorPreferences) {
 		preferences.autoApplyFreshRecordingAutoZooms,
 	);
 	const [connectZooms, setConnectZooms] = useState(preferences.connectZooms);
+	const [defaultZoomSoundId, setDefaultZoomSoundId] = useState(preferences.defaultZoomSoundId);
+	const [defaultZoomPanSoundId, setDefaultZoomPanSoundId] = useState(preferences.defaultZoomPanSoundId);
+	const [defaultZoomOutSoundId, setDefaultZoomOutSoundId] = useState(preferences.defaultZoomOutSoundId);
 	const [zoomInDurationMs, setZoomInDurationMs] = useState(
 		preferences.zoomInDurationMs ?? DEFAULT_ZOOM_IN_DURATION_MS,
 	);
@@ -87,6 +90,11 @@ export function useAppearanceState(preferences: EditorPreferences) {
 	const [zoomSmoothness, setZoomSmoothness] = useState(0.5);
 	const [zoomClassicMode, setZoomClassicMode] = useState(false);
 	const [cursorMotionBlur, setCursorMotionBlur] = useState(preferences.cursorMotionBlur);
+	const [cursorTrailEnabled, setCursorTrailEnabled] = useState(preferences.cursorTrailEnabled);
+	const [cursorTrailSize, setCursorTrailSize] = useState(preferences.cursorTrailSize);
+	const [cursorTrailLength, setCursorTrailLength] = useState(preferences.cursorTrailLength);
+	const [cursorTrailDurationMs, setCursorTrailDurationMs] = useState(preferences.cursorTrailDurationMs);
+	const [cursorTrailColor, setCursorTrailColor] = useState(preferences.cursorTrailColor);
 	const [cursorClickEffect, setCursorClickEffect] = useState<CursorClickEffectStyle>(
 		preferences.cursorClickEffect,
 	);
@@ -135,6 +143,12 @@ export function useAppearanceState(preferences: EditorPreferences) {
 		setAutoApplyFreshRecordingAutoZooms,
 		connectZooms,
 		setConnectZooms,
+		defaultZoomSoundId,
+		setDefaultZoomSoundId,
+		defaultZoomPanSoundId,
+		setDefaultZoomPanSoundId,
+		defaultZoomOutSoundId,
+		setDefaultZoomOutSoundId,
 		zoomInDurationMs,
 		setZoomInDurationMs,
 		zoomInOverlapMs,
@@ -179,6 +193,11 @@ export function useAppearanceState(preferences: EditorPreferences) {
 		setZoomClassicMode,
 		cursorMotionBlur,
 		setCursorMotionBlur,
+		cursorTrailEnabled, setCursorTrailEnabled,
+		cursorTrailSize, setCursorTrailSize,
+		cursorTrailLength, setCursorTrailLength,
+		cursorTrailDurationMs, setCursorTrailDurationMs,
+		cursorTrailColor, setCursorTrailColor,
 		cursorClickEffect,
 		setCursorClickEffect,
 		cursorClickEffectColor,

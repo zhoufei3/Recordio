@@ -32,8 +32,15 @@ export const BUILT_IN_WALLPAPERS: BuiltInWallpaper[] = [
 	createWallpaperEntry("sonoma-evening.jpg", "Sonoma Evening"),
 	createWallpaperEntry("sonoma-horizon.jpg", "Sonoma Horizon"),
 	createWallpaperEntry("iridescent-9.jpg", "Iridescent 9"),
-	createWallpaperEntry("energy-17.jpg", "Energy 17"),
-	createWallpaperEntry("wispysky.mp4", "Wispy Sky"),
+  createWallpaperEntry("energy-17.jpg", "Energy 17"),
+  createWallpaperEntry("mojave-beach.jpg", "Mojave Beach"),
+  createWallpaperEntry("lunar-tides.jpg", "Lunar Tides"),
+  createWallpaperEntry("monterey-blue.jpg", "Monterey Blue"),
+  createWallpaperEntry("sierra-evening.jpg", "Sierra Evening"),
+  createWallpaperEntry("lion-beach.jpg", "Lion Beach"),
+  createWallpaperEntry("ocean-waves.jpg", "Ocean Waves"),
+  createWallpaperEntry("windows-10-dark.jpg", "Windows 10 Dark"),
+  createWallpaperEntry("wispysky.mp4", "Wispy Sky"),
 ];
 
 export const WALLPAPER_PATHS = BUILT_IN_WALLPAPERS.map((wallpaper) => wallpaper.publicPath);

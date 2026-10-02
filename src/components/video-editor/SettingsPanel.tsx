@@ -39,14 +39,32 @@ import {
 	getMatchingCursorMotionPresetId,
 } from "./cursorMotionPresets";
 import { loadEditorPreferences, saveEditorPreferences } from "./editorPreferences";
-import { CLICK_SOUNDS, normalizeClickSoundId, type ClickSoundId } from "./clickSounds";
+import { getAvailableClickSounds, normalizeClickSoundId, type ClickSoundId } from "./clickSounds";
+import { getAvailableZoomSounds, normalizeZoomSoundId, type ZoomSoundId } from "./zoomSounds";
+import { getCustomSounds, removeCustomSound, saveCustomSound, type CustomSound, type CustomSoundKind } from "./customSounds";
+import { resolveMediaResourceUrl } from "@/lib/exporter/localMediaSource";
 
 function previewClickSound(id: ClickSoundId) {
-	const sound = CLICK_SOUNDS.find((item) => item.id === id);
+	const sound = getAvailableClickSounds().find((item) => item.id === id);
 	if (!sound) return;
-	const audio = new Audio(sound.url);
-	audio.volume = 0.55;
-	void audio.play().catch(() => undefined);
+	const play = (url: string) => {
+		const audio = new Audio(url);
+		audio.volume = 0.55;
+		void audio.play().catch(() => undefined);
+	};
+	if (sound.id.startsWith("custom-")) void resolveMediaResourceUrl(sound.url).then(play);
+	else play(sound.url);
+}
+function previewZoomSound(id: ZoomSoundId) {
+	const sound = getAvailableZoomSounds().find((item) => item.id === id);
+	if (!sound) return;
+	const play = (url: string) => {
+		const audio = new Audio(url);
+		audio.volume = 0.4;
+		void audio.play().catch(() => undefined);
+	};
+	if (sound.id.startsWith("custom-")) void resolveMediaResourceUrl(sound.url).then(play);
+	else play(sound.url);
 }
 import { getDefaultBorderRadiusPercent } from "./projectPersistence";
 import { SliderControl } from "./SliderControl";
@@ -216,6 +234,8 @@ const MOTION_PRESET_ORDER: CursorMotionPresetId[] = [
 	"immersive",
 	"elastic-soft",
 	"elastic-vivid",
+	"elastic-bold",
+	"elastic-ripple",
 ];
 
 const CURSOR_CLICK_EFFECT_OPTIONS: Array<{
@@ -447,6 +467,7 @@ function CursorClickEffectCards({
 }
 
 interface SettingsPanelProps {
+	selectedTrackItemCount?: number;
 	advanced?: boolean;
 	panelMode?: "editor" | "background";
 	activeEffectSection?: EditorEffectSection;
@@ -457,6 +478,14 @@ interface SettingsPanelProps {
 	selectedZoomId?: string | null;
 	selectedZoomMode?: ZoomMode | null;
 	onZoomModeChange?: (mode: ZoomMode) => void;
+	selectedZoomSoundId?: ZoomSoundId;
+	selectedZoomPanSoundId?: ZoomSoundId;
+	selectedZoomOutSoundId?: ZoomSoundId;
+	onZoomSoundChange?: (id: ZoomSoundId) => void;
+	onZoomPanSoundChange?: (id: ZoomSoundId) => void;
+	onZoomOutSoundChange?: (id: ZoomSoundId) => void;
+	onApplyZoomSoundToAll?: () => void;
+	onRemoveCustomZoomSound?: (id: string) => void;
 	onZoomDelete?: (id: string) => void;
 	selectedClipId?: string | null;
 	selectedClipSpeed?: number | null;
@@ -468,6 +497,7 @@ interface SettingsPanelProps {
 	onClipDelete?: (id: string) => void;
 	selectedAudioId?: string | null;
 	selectedAudioVolume?: number | null;
+	selectedAudioEffectKind?: "click" | "zoom" | null;
 	selectedAudioNormalize?: boolean | null;
 	onAudioVolumeChange?: (volume: number) => void;
 	onAudioNormalizeChange?: (normalize: boolean) => void;
@@ -536,7 +566,25 @@ interface SettingsPanelProps {
 	onLeftClickSoundChange?: (sound: ClickSoundId) => void;
 	rightClickSound?: ClickSoundId;
 	onRightClickSoundChange?: (sound: ClickSoundId) => void;
+	defaultZoomSoundId?: ZoomSoundId;
+	defaultZoomPanSoundId?: ZoomSoundId;
+	defaultZoomOutSoundId?: ZoomSoundId;
+	onDefaultZoomSoundChange?: (id: ZoomSoundId) => void;
+	onDefaultZoomPanSoundChange?: (id: ZoomSoundId) => void;
+	onDefaultZoomOutSoundChange?: (id: ZoomSoundId) => void;
+	deletedClickSoundCount?: number;
+	onRestoreDeletedClickSounds?: () => void;
 	cursorClickBounce?: number;
+	cursorTrailEnabled?: boolean;
+	onCursorTrailEnabledChange?: (enabled: boolean) => void;
+	cursorTrailSize?: number;
+	onCursorTrailSizeChange?: (size: number) => void;
+	cursorTrailLength?: number;
+	onCursorTrailLengthChange?: (length: number) => void;
+	cursorTrailDurationMs?: number;
+	onCursorTrailDurationMsChange?: (durationMs: number) => void;
+	cursorTrailColor?: string;
+	onCursorTrailColorChange?: (color: string) => void;
 	onCursorClickBounceChange?: (amount: number) => void;
 	cursorClickBounceDuration?: number;
 	onCursorClickBounceDurationChange?: (duration: number) => void;
@@ -913,6 +961,7 @@ function CursorStylePreview({
 }
 
 export function SettingsPanel({
+	selectedTrackItemCount = 1,
 	advanced = false,
 	panelMode = "editor",
 	activeEffectSection: activeEffectSectionProp,
@@ -923,6 +972,14 @@ export function SettingsPanel({
 	selectedZoomId,
 	selectedZoomMode,
 	onZoomModeChange,
+	selectedZoomSoundId = "none",
+	selectedZoomPanSoundId = "none",
+	selectedZoomOutSoundId = "none",
+	onZoomSoundChange,
+	onZoomPanSoundChange,
+	onZoomOutSoundChange,
+	onApplyZoomSoundToAll,
+	onRemoveCustomZoomSound,
 	onZoomDelete,
 	selectedClipId,
 	selectedClipSpeed,
@@ -934,6 +991,7 @@ export function SettingsPanel({
 	onClipDelete,
 	selectedAudioId,
 	selectedAudioVolume,
+	selectedAudioEffectKind,
 	selectedAudioNormalize,
 	onAudioVolumeChange,
 	onAudioNormalizeChange,
@@ -989,8 +1047,26 @@ export function SettingsPanel({
 	leftClickSound = "none",
 	onLeftClickSoundChange,
 	rightClickSound = "none",
+	defaultZoomSoundId = "none",
+	defaultZoomPanSoundId = "none",
+	defaultZoomOutSoundId = "none",
+	onDefaultZoomSoundChange,
+	onDefaultZoomPanSoundChange,
+	onDefaultZoomOutSoundChange,
+	deletedClickSoundCount = 0,
+	onRestoreDeletedClickSounds,
 	onRightClickSoundChange,
 	cursorClickBounce = 1,
+	cursorTrailEnabled = false,
+	onCursorTrailEnabledChange,
+	cursorTrailSize = 0.65,
+	onCursorTrailSizeChange,
+	cursorTrailLength = 12,
+	onCursorTrailLengthChange,
+	cursorTrailDurationMs = 360,
+	onCursorTrailDurationMsChange,
+	cursorTrailColor = "#42C97A",
+	onCursorTrailColorChange,
 	onCursorClickBounceChange,
 	cursorClickBounceDuration = DEFAULT_CURSOR_CLICK_BOUNCE_DURATION,
 	onCursorClickBounceDurationChange,
@@ -1052,6 +1128,66 @@ export function SettingsPanel({
 	const { preference: themePreference, setPreference: setThemePreference } = useTheme();
 	const isBackgroundPanel = panelMode === "background";
 	const initialEditorPreferences = useMemo(() => loadEditorPreferences(), []);
+	const [, setCustomSounds] = useState(() => getCustomSounds());
+	const deleteCustomSound = async (kind: CustomSoundKind, sound: CustomSound) => {
+		const result = await window.electronAPI.deleteEditorSound(sound.url);
+		if (!result.success) {
+			toast.error(result.error || tSettings("audio.customSoundDeleteFailed", "Could not delete sound"));
+			return;
+		}
+		removeCustomSound(kind, sound.id);
+		setCustomSounds(getCustomSounds());
+		if (kind === "click") {
+			if (leftClickSound === sound.id) onLeftClickSoundChange?.("none");
+			if (rightClickSound === sound.id) onRightClickSoundChange?.("none");
+		} else {
+			onRemoveCustomZoomSound?.(sound.id);
+		}
+	};
+	const customSoundDeleteAction = (kind: CustomSoundKind, sound: CustomSound) => (
+		<button
+			type="button"
+			className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-danger/10 hover:text-danger"
+			aria-label={`${tSettings("audio.removeCustomSound", "删除自定义音效")} ${sound.label}`}
+			title={tSettings("audio.removeCustomSound", "删除自定义音效")}
+			onClick={(event) => {
+				event.preventDefault();
+				event.stopPropagation();
+				void deleteCustomSound(kind, sound);
+			}}
+		>
+			<Trash2 className="size-3.5" />
+		</button>
+	);
+	const deleteActionForSound = (kind: CustomSoundKind, id: string) => {
+		const sound = getCustomSounds(kind).find((item) => item.id === id);
+		return sound ? customSoundDeleteAction(kind, sound) : undefined;
+	};
+	const importCustomSound = async (kind: CustomSoundKind) => {
+		const result = await window.electronAPI.importEditorSound();
+		if (result.canceled) return;
+		if (!result.success || !result.path) {
+			toast.error(result.error || tSettings("audio.customSoundImportFailed", "Could not import sound"));
+			return;
+		}
+		const url = result.path;
+		const durationMs = await new Promise<number>((resolve) => {
+			void resolveMediaResourceUrl(url).then((resolved) => {
+				const audio = new Audio();
+				audio.preload = "metadata";
+				audio.onloadedmetadata = () => resolve(Number.isFinite(audio.duration) ? Math.max(1, audio.duration * 1000) : 1000);
+				audio.onerror = () => resolve(1000);
+				audio.src = resolved;
+			});
+		});
+		saveCustomSound(kind, {
+			id: `custom-${kind}-${crypto.randomUUID()}`,
+			label: result.name || tSettings("audio.customSound", "自定义音效"),
+			url,
+			durationMs,
+		});
+		setCustomSounds(getCustomSounds());
+	};
 	const clipSpeedRange = useMemo(getPreviewPlaybackRateRange, []);
 	const [builtInWallpapers, setBuiltInWallpapers] =
 		useState<BuiltInWallpaper[]>(BUILT_IN_WALLPAPERS);
@@ -1495,9 +1631,12 @@ export function SettingsPanel({
 		onCursorClickEffectScaleChange?.(initialEditorPreferences.cursorClickEffectScale);
 		onCursorClickEffectOpacityChange?.(initialEditorPreferences.cursorClickEffectOpacity);
 		onCursorClickEffectDurationMsChange?.(initialEditorPreferences.cursorClickEffectDurationMs);
+		onCursorTrailEnabledChange?.(initialEditorPreferences.cursorTrailEnabled);
+		onCursorTrailSizeChange?.(initialEditorPreferences.cursorTrailSize);
+		onCursorTrailLengthChange?.(initialEditorPreferences.cursorTrailLength);
+		onCursorTrailDurationMsChange?.(initialEditorPreferences.cursorTrailDurationMs);
+		onCursorTrailColorChange?.(initialEditorPreferences.cursorTrailColor);
 		onRightClickEffectChange?.(initialEditorPreferences.rightClickEffect);
-		onLeftClickSoundChange?.(initialEditorPreferences.leftClickSound);
-		onRightClickSoundChange?.(initialEditorPreferences.rightClickSound);
 		onCursorClickBounceChange?.(initialEditorPreferences.cursorClickBounce);
 		onCursorClickBounceDurationChange?.(initialEditorPreferences.cursorClickBounceDuration);
 		onCursorSwayChange?.(initialEditorPreferences.cursorSway);
@@ -1518,11 +1657,13 @@ export function SettingsPanel({
 				cameraSpringMassMultiplier,
 				cursorClickBounce,
 				cursorClickBounceDuration,
+				cursorClickEffect,
 			})
 		);
 	}, [
 		cursorClickBounce,
 		cursorClickBounceDuration,
+		cursorClickEffect,
 		cameraSpringStiffnessMultiplier,
 		cameraSpringDampingMultiplier,
 		cameraSpringMassMultiplier,
@@ -1537,6 +1678,7 @@ export function SettingsPanel({
 
 	const applyMotionPreset = (presetId: CursorMotionPresetId) => {
 		const preset = CURSOR_MOTION_PRESETS[presetId];
+		if (preset.cursorClickEffect) onCursorClickEffectChange?.(preset.cursorClickEffect);
 		onZoomInDurationMsChange?.(preset.zoomInDurationMs);
 		onZoomOutDurationMsChange?.(preset.zoomOutDurationMs);
 		onCursorSizeChange?.(preset.cursorSize);
@@ -1547,7 +1689,7 @@ export function SettingsPanel({
 		onCameraSpringStiffnessMultiplierChange?.(preset.cameraSpringStiffnessMultiplier);
 		onCameraSpringDampingMultiplierChange?.(preset.cameraSpringDampingMultiplier);
 		onCameraSpringMassMultiplierChange?.(preset.cameraSpringMassMultiplier);
-		if (presetId === "elastic-soft" || presetId === "elastic-vivid") {
+		if (presetId.startsWith("elastic-")) {
 			onZoomClassicModeChange?.(false);
 		}
 		onCursorClickBounceChange?.(preset.cursorClickBounce);
@@ -2672,6 +2814,7 @@ export function SettingsPanel({
 
 		const zoomItemSectionContent = (
 			<section className="flex flex-col gap-4">
+				{selectedTrackItemCount > 1 && <p className="text-xs text-muted">{tSettings("multiSelectHint", "Selected {{count}} items. Changes apply to all selected items.", { count: selectedTrackItemCount })}</p>}
 				{selectedZoomId && (
 					<>
 						<SectionLabel>{tSettings("zoom.mode", "Mode")}</SectionLabel>
@@ -2724,7 +2867,33 @@ export function SettingsPanel({
 								</ChoiceItem>
 							))}
 						</ChoiceGroup>
-					</>
+						<div className="flex items-center justify-between gap-2 pt-2">
+							<SectionLabel>{tSettings("zoom.sound", "Zoom Sound")}</SectionLabel>
+							<Button type="button" variant="ghost" size="sm" className="text-xs" onClick={onApplyZoomSoundToAll}>
+								{tSettings("zoom.applySoundToAll", "Apply to all zooms")}
+							</Button>
+						</div>
+						{([
+							{ key: "in", label: tSettings("zoom.soundIn", "Zoom in"), value: selectedZoomSoundId, change: onZoomSoundChange },
+							{ key: "pan", label: tSettings("zoom.soundPan", "Camera movement"), value: selectedZoomPanSoundId, change: onZoomPanSoundChange },
+							{ key: "out", label: tSettings("zoom.soundOut", "Zoom out"), value: selectedZoomOutSoundId, change: onZoomOutSoundChange },
+						] as const).map((phase) => (
+							<div key={phase.key} className="flex items-center justify-between gap-2">
+								<span className="text-xs text-muted-foreground">{phase.label}</span>
+								<Select value={phase.value} onValueChange={(value) => {
+									const id = normalizeZoomSoundId(value);
+									phase.change?.(id);
+									previewZoomSound(id);
+								}}>
+									<SelectTrigger className="h-9 w-[160px] text-sm"><SelectValue /></SelectTrigger>
+									<SelectContent className="max-h-72">
+										<SelectItem value="none">{tSettings("zoom.soundNone", "None")}</SelectItem>
+										{getAvailableZoomSounds().map((sound) => <SelectItem key={sound.id} value={sound.id} endAction={deleteActionForSound("zoom", sound.id)}>{sound.id.startsWith("custom-") ? sound.label : tSettings(`zoom.sounds.${sound.id}`, sound.label)}</SelectItem>)}
+									</SelectContent>
+								</Select>
+							</div>
+						))}
+						</>
 				)}
 				{advanced && (
 					<>
@@ -2767,16 +2936,21 @@ export function SettingsPanel({
 
 		const audioSectionContent = (
 			<section className="flex flex-col gap-3">
+				{selectedTrackItemCount > 1 && <p className="text-xs text-muted">{tSettings("multiSelectHint", "Selected {{count}} items. Changes apply to all selected items.", { count: selectedTrackItemCount })}</p>}
 				<div className="flex items-center justify-between gap-3">
-					<SectionLabel>{tSettings("audio.volumeTitle", "Audio")}</SectionLabel>
+					<SectionLabel>{selectedAudioEffectKind === "click"
+						? tSettings("audio.clickEffectTitle", "Mouse click sound")
+						: selectedAudioEffectKind === "zoom"
+							? tSettings("audio.zoomEffectTitle", "Zoom sound")
+							: tSettings("audio.volumeTitle", "Audio")}</SectionLabel>
 					<Button
 						className="text-xs text-muted"
 						size="sm"
 						variant="ghost"
 						type="button"
 						onClick={() => {
-							onAudioVolumeChange?.(1);
-							onAudioNormalizeChange?.(false);
+							onAudioVolumeChange?.(selectedAudioEffectKind === "click" ? 0.55 : selectedAudioEffectKind === "zoom" ? 0.4 : 1);
+							if (!selectedAudioEffectKind) onAudioNormalizeChange?.(false);
 						}}
 					>
 						{t("common.actions.reset", "Reset")}
@@ -2791,7 +2965,7 @@ export function SettingsPanel({
 					onChange={(v) => onAudioVolumeChange?.(v)}
 					formatValue={(v) => `${Math.round(v * 100)}%`}
 				/>
-				<div className="flex items-center justify-between py-2">
+				{!selectedAudioEffectKind && <div className="flex items-center justify-between py-2">
 					<span className="text-xs text-muted-foreground">
 						{tSettings("audio.normalize", "Normalize")}
 					</span>
@@ -2800,12 +2974,13 @@ export function SettingsPanel({
 						checked={Boolean(selectedAudioNormalize)}
 						onCheckedChange={(v) => onAudioNormalizeChange?.(v)}
 					/>
-				</div>
+				</div>}
 			</section>
 		);
 
 		const clipSectionContent = (
 			<section className="flex flex-col gap-3">
+				{selectedTrackItemCount > 1 && <p className="text-xs text-muted">{tSettings("multiSelectHint", "Selected {{count}} items. Changes apply to all selected items.", { count: selectedTrackItemCount })}</p>}
 				<SliderControl
 					label={tSettings("speed.label", "Speed")}
 					value={Math.min(
@@ -2893,6 +3068,93 @@ export function SettingsPanel({
 				return captionsSectionContent;
 			case "caption":
 				return captionSectionContent;
+			case "cursorSound":
+				return (
+					<section className="flex flex-col gap-4">
+						<div className="flex justify-end">
+							<Button type="button" variant="ghost" size="sm" className="text-xs text-muted" onClick={() => {
+								onLeftClickSoundChange?.(initialEditorPreferences.leftClickSound);
+								onRightClickSoundChange?.(initialEditorPreferences.rightClickSound);
+								onDefaultZoomSoundChange?.(initialEditorPreferences.defaultZoomSoundId);
+								onDefaultZoomPanSoundChange?.(initialEditorPreferences.defaultZoomPanSoundId);
+								onDefaultZoomOutSoundChange?.(initialEditorPreferences.defaultZoomOutSoundId);
+							}}>
+								{t("common.actions.reset", "Reset")}
+							</Button>
+						</div>
+						<div className="flex items-center justify-between gap-2">
+							<SectionLabel>{tSettings("zoom.sound", "Zoom sound")}</SectionLabel>
+							<Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => void importCustomSound("zoom")}>
+								<Upload className="mr-1 size-3.5" />{tSettings("audio.importCustomSound", "导入自定义音效")}
+							</Button>
+						</div>
+						<div className="rounded-xl border border-separator p-3">
+							<div className="mb-3">
+								<div className="text-sm font-medium">{tSettings("zoom.defaultSoundsTitle", "Zoom sound defaults")}</div>
+								<p className="mt-1 text-xs text-muted-foreground">{tSettings("zoom.defaultSoundsDescription", "Applied to all zoom blocks. Per-block changes are saved separately.")}</p>
+							</div>
+							{([
+								{ key: "in", label: tSettings("zoom.soundIn", "Zoom in"), value: defaultZoomSoundId, change: onDefaultZoomSoundChange },
+								{ key: "pan", label: tSettings("zoom.soundPan", "Camera movement"), value: defaultZoomPanSoundId, change: onDefaultZoomPanSoundChange },
+								{ key: "out", label: tSettings("zoom.soundOut", "Zoom out"), value: defaultZoomOutSoundId, change: onDefaultZoomOutSoundChange },
+							] as const).map((phase) => (
+								<div key={phase.key} className="mb-2 flex items-center justify-between gap-3 last:mb-0">
+									<span className="text-xs text-muted-foreground">{phase.label}</span>
+									<Select value={phase.value} onValueChange={(value) => {
+										const id = normalizeZoomSoundId(value);
+										phase.change?.(id);
+										previewZoomSound(id);
+									}}>
+										<SelectTrigger className="h-9 w-[160px] text-sm"><SelectValue /></SelectTrigger>
+										<SelectContent className="max-h-72">
+											<SelectItem value="none">{tSettings("zoom.soundNone", "None")}</SelectItem>
+											{getAvailableZoomSounds().map((sound) => <SelectItem key={sound.id} value={sound.id} endAction={deleteActionForSound("zoom", sound.id)}>{sound.id.startsWith("custom-") ? sound.label : tSettings(`zoom.sounds.${sound.id}`, sound.label)}</SelectItem>)}
+										</SelectContent>
+									</Select>
+								</div>
+							))}
+						</div>
+						<div className="flex items-center justify-between gap-2">
+							<SectionLabel>{tSettings("audio.clickEffectTitle", "Mouse click sound")}</SectionLabel>
+							<Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => void importCustomSound("click")}>
+								<Upload className="mr-1 size-3.5" />{tSettings("audio.importCustomSound", "导入自定义音效")}
+							</Button>
+						</div>
+						<div className="flex items-center justify-between gap-3">
+							<span className="text-sm">{tSettings("effects.clickSounds.left", "Left-click Sound")}</span>
+							<Select value={leftClickSound} onValueChange={(value) => {
+								const id = normalizeClickSoundId(value);
+								onLeftClickSoundChange?.(id);
+								previewClickSound(id);
+							}}>
+								<SelectTrigger className="h-9 w-[160px] text-sm"><SelectValue /></SelectTrigger>
+								<SelectContent>
+									<SelectItem value="none">{tSettings("effects.clickSounds.none", "Off")}</SelectItem>
+									{getAvailableClickSounds().map((sound, index) => <SelectItem key={sound.id} value={sound.id} endAction={deleteActionForSound("click", sound.id)}>{("label" in sound) ? sound.label : tSettings(`effects.clickSounds.sound${index + 1}`, `Sound ${index + 1}`)}</SelectItem>)}
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="flex items-center justify-between gap-3">
+							<span className="text-sm">{tSettings("effects.clickSounds.right", "Right-click Sound")}</span>
+							<Select value={rightClickSound} onValueChange={(value) => {
+								const id = normalizeClickSoundId(value);
+								onRightClickSoundChange?.(id);
+								previewClickSound(id);
+							}}>
+								<SelectTrigger className="h-9 w-[160px] text-sm"><SelectValue /></SelectTrigger>
+								<SelectContent>
+									<SelectItem value="none">{tSettings("effects.clickSounds.none", "Off")}</SelectItem>
+									{getAvailableClickSounds().map((sound, index) => <SelectItem key={sound.id} value={sound.id} endAction={deleteActionForSound("click", sound.id)}>{("label" in sound) ? sound.label : tSettings(`effects.clickSounds.sound${index + 1}`, `Sound ${index + 1}`)}</SelectItem>)}
+								</SelectContent>
+							</Select>
+						</div>
+						{deletedClickSoundCount > 0 ? (
+							<Button type="button" variant="outline" className="h-9 w-full text-sm" onClick={onRestoreDeletedClickSounds}>
+								{tSettings("effects.clickSounds.restoreDeleted", "恢复已删除的点击音效")} ({deletedClickSoundCount})
+							</Button>
+						) : null}
+					</section>
+				);
 			case "cursor":
 				return (
 					<section className="flex flex-col gap-4">
@@ -2970,15 +3232,27 @@ export function SettingsPanel({
 					})}
 								</ChoiceGroup>
 							</div>
-							<SliderControl
-								label={tSettings("effects.cursorSize")}
+			<SliderControl
+				label={tSettings("effects.cursorSize")}
 								value={cursorSize}
 								min={0.5}
 								max={10}
 								step={0.05}
 								onChange={(v) => onCursorSizeChange?.(v)}
-								formatValue={(v) => `${v.toFixed(2)}×`}
-							/>
+				formatValue={(v) => `${v.toFixed(2)}×`}
+			/>
+			<div className="rounded-xl border border-foreground/10 p-3">
+				<label className="flex items-center justify-between gap-3 text-xs">
+					<span>{tSettings("effects.cursorTrail.title", "光标拖影")}</span>
+					<Switch checked={cursorTrailEnabled} onCheckedChange={onCursorTrailEnabledChange} aria-label={tSettings("effects.cursorTrail.title", "光标拖影")} />
+				</label>
+				{cursorTrailEnabled ? <div className="mt-3 grid gap-3">
+					<SliderControl label={tSettings("effects.cursorTrail.size", "拖影大小")} value={cursorTrailSize} min={0.2} max={2} step={0.05} onChange={(v) => onCursorTrailSizeChange?.(v)} formatValue={(v) => `${v.toFixed(2)}×`} />
+					<SliderControl label={tSettings("effects.cursorTrail.length", "拖影长短")} value={cursorTrailLength} min={2} max={30} step={1} onChange={(v) => onCursorTrailLengthChange?.(v)} formatValue={(v) => `${Math.round(v)}`} />
+					<SliderControl label={tSettings("effects.cursorTrail.duration", "持续时间")} value={cursorTrailDurationMs} min={80} max={1200} step={10} onChange={(v) => onCursorTrailDurationMsChange?.(v)} formatValue={(v) => `${Math.round(v)} ms`} />
+					<div className="grid gap-2"><div className="text-xs text-muted-foreground">{tSettings("effects.cursorTrail.color", "拖影颜色")}</div><ColorPalette color={cursorTrailColor} colors={CLICK_EFFECT_COLOR_OPTIONS} onChange={({ hex }) => onCursorTrailColorChange?.(hex)} /><ColorControl label={tSettings("effects.cursorClickEffects.customColor", "自定义颜色")} value={cursorTrailColor} onChange={(color) => onCursorTrailColorChange?.(color)} /></div>
+				</div> : null}
+			</div>
 							<CursorClickEffectCards
 								title={tSettings(
 									"effects.cursorClickEffects.leftTitle",
@@ -2989,20 +3263,6 @@ export function SettingsPanel({
 								onApply={(effectId) => onCursorClickEffectChange?.(effectId)}
 								tSettings={tSettings}
 							/>
-							<div className="flex items-center justify-between gap-3">
-								<span className="text-sm">{tSettings("effects.clickSounds.left", "Left-click Sound")}</span>
-								<Select value={leftClickSound} onValueChange={(value) => {
-									const id = normalizeClickSoundId(value);
-									onLeftClickSoundChange?.(id);
-									previewClickSound(id);
-								}}>
-									<SelectTrigger className="h-9 w-[160px] text-sm"><SelectValue /></SelectTrigger>
-									<SelectContent>
-										<SelectItem value="none">{tSettings("effects.clickSounds.none", "Off")}</SelectItem>
-										{CLICK_SOUNDS.map((sound, index) => <SelectItem key={sound.id} value={sound.id}>{tSettings(`effects.clickSounds.sound${index + 1}`, `Sound ${index + 1}`)}</SelectItem>)}
-									</SelectContent>
-								</Select>
-							</div>
 							{advanced ? (
 								<div className="grid gap-3">
 									<div className="grid gap-1">
@@ -3074,20 +3334,6 @@ export function SettingsPanel({
 								onApply={(style) => onRightClickEffectChange?.({ ...rightClickEffect, style })}
 								tSettings={tSettings}
 							/>
-							<div className="flex items-center justify-between gap-3">
-								<span className="text-sm">{tSettings("effects.clickSounds.right", "Right-click Sound")}</span>
-								<Select value={rightClickSound} onValueChange={(value) => {
-									const id = normalizeClickSoundId(value);
-									onRightClickSoundChange?.(id);
-									previewClickSound(id);
-								}}>
-									<SelectTrigger className="h-9 w-[160px] text-sm"><SelectValue /></SelectTrigger>
-									<SelectContent>
-										<SelectItem value="none">{tSettings("effects.clickSounds.none", "Off")}</SelectItem>
-										{CLICK_SOUNDS.map((sound, index) => <SelectItem key={sound.id} value={sound.id}>{tSettings(`effects.clickSounds.sound${index + 1}`, `Sound ${index + 1}`)}</SelectItem>)}
-									</SelectContent>
-								</Select>
-							</div>
 							{advanced ? (
 								<div className="grid gap-3">
 									<div className="grid gap-1">
@@ -3125,9 +3371,9 @@ export function SettingsPanel({
 										"effects.cursorClickBounceDuration",
 										"Bounce Speed",
 									)}
-									value={cursorClickBounceDuration}
-									min={60}
-									max={500}
+					value={cursorClickBounceDuration}
+					min={60}
+					max={1000}
 									step={5}
 									onChange={(v) => onCursorClickBounceDurationChange?.(v)}
 									formatValue={(v) => `${Math.round(v)} ms`}
@@ -3511,7 +3757,9 @@ export function SettingsPanel({
 						className="h-9 w-full gap-2 text-xs"
 					>
 						<Trash2 className="h-3 w-3" />
-						{tSettings("audio.deleteRegion", "Delete Audio")}
+						{selectedAudioEffectKind
+							? tSettings("audio.deleteEffectSound", "Delete Sound Effect")
+							: tSettings("audio.deleteRegion", "Delete Audio")}
 					</Button>
 				)}
 				{selectedAnnotationId && (

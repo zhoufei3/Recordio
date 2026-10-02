@@ -59,10 +59,11 @@ interface TimelineCanvasProps {
 	currentTimeMs: number;
 	onSeek?: (time: number) => void;
 	canPlaceZoomAtMs?: (startMs: number) => boolean;
-	onSelectZoom?: (id: string | null) => void;
-	onSelectClip?: (id: string | null) => void;
+	onSelectZoom?: (id: string | null, additive?: boolean) => void;
+	onSelectClip?: (id: string | null, additive?: boolean) => void;
 	onSelectAnnotation?: (id: string | null) => void;
-	onSelectAudio?: (id: string | null) => void;
+	onSelectAudio?: (id: string | null, additive?: boolean) => void;
+	onSelectTrackItems?: (kind: "zoom" | "clip" | "audio", ids: string[]) => void;
 	onSelectCaption?: (id: string | null) => void;
 	onAddZoomAtMs?: (startMs: number) => void;
 	onAddCaptionAtMs?: (startMs: number) => void;
@@ -71,9 +72,12 @@ interface TimelineCanvasProps {
 	captionsEnabled?: boolean;
 	captionQuickAddEnabled?: boolean;
 	selectedZoomId: string | null;
+	selectedZoomIds?: string[];
 	selectedClipId?: string | null;
+	selectedClipIds?: string[];
 	selectedAnnotationId?: string | null;
 	selectedAudioId?: string | null;
+	selectedAudioIds?: string[];
 	selectedCaptionId?: string | null;
 	selectAllBlocksActive?: boolean;
 	onClearBlockSelection?: () => void;
@@ -405,14 +409,17 @@ interface TimelineCanvasRowsProps {
 	videoDurationMs: number;
 	selectAllBlocksActive: boolean;
 	selectedZoomId: string | null;
+	selectedZoomIds?: string[];
 	selectedClipId?: string | null;
+	selectedClipIds?: string[];
 	selectedAnnotationId?: string | null;
 	selectedAudioId?: string | null;
+	selectedAudioIds?: string[];
 	selectedCaptionId?: string | null;
-	onSelectZoom?: (id: string | null) => void;
-	onSelectClip?: (id: string | null) => void;
+	onSelectZoom?: (id: string | null, additive?: boolean) => void;
+	onSelectClip?: (id: string | null, additive?: boolean) => void;
 	onSelectAnnotation?: (id: string | null) => void;
-	onSelectAudio?: (id: string | null) => void;
+	onSelectAudio?: (id: string | null, additive?: boolean) => void;
 	onSelectCaption?: (id: string | null) => void;
 	sourceAudioTracks?: SourceAudioTrackWithPeaks[];
 	getSourceAudioTrackSettingsForClip?: (clipId: string | null) => SourceAudioTrackSettings;
@@ -444,7 +451,7 @@ interface AudioItemWithWaveformProps {
 	span: { start: number; end: number };
 	waveformSpan: { start: number; end: number };
 	isSelected: boolean;
-	onSelectAudio?: (id: string | null) => void;
+	onSelectAudio?: (id: string | null, additive?: boolean) => void;
 }
 
 function AudioItemWithWaveform({
@@ -482,9 +489,12 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 	items,
 	selectAllBlocksActive,
 	selectedZoomId,
+	selectedZoomIds = [],
 	selectedClipId,
+	selectedClipIds = [],
 	selectedAnnotationId,
 	selectedAudioId,
+	selectedAudioIds = [],
 	selectedCaptionId,
 	onSelectZoom,
 	onSelectClip,
@@ -709,7 +719,7 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 						key={item.id}
 						rowId={item.rowId}
 						span={item.span}
-						isSelected={item.id === selectedClipId}
+						isSelected={(item.id === selectedClipId || selectedClipIds.includes(item.id))}
 						onSelectId={onSelectClip}
 						variant="clip"
 						displaySpan={item.displaySpan}
@@ -764,7 +774,7 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 										rowId={`${SOURCE_AUDIO_ROW_ID}-${track.id}`}
 										span={liveSpanPreviewById?.[item.id] ?? item.span}
 										disabled
-										isSelected={item.id === selectedClipId}
+										isSelected={(item.id === selectedClipId || selectedClipIds.includes(item.id))}
 										onSelect={() => onSelectClip?.(item.id)}
 										variant="audio"
 										waveformPeaks={track.peaks}
@@ -837,7 +847,7 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 							key={item.id}
 							rowId={item.rowId}
 							span={item.span}
-							isSelected={selectAllBlocksActive || item.id === selectedZoomId}
+							isSelected={selectAllBlocksActive || (item.id === selectedZoomId || selectedZoomIds.includes(item.id))}
 							onSelectId={onSelectZoom}
 							zoomDepth={item.zoomDepth}
 							zoomMode={item.zoomMode}
@@ -878,13 +888,19 @@ const TimelineCanvasRows = memo(function TimelineCanvasRows({
 					isEmpty={rowItems.length === 0}
 					hint={index === 0 ? t("timeline.hintAudio", "Click music icon to add audio") : undefined}
 				>
-					{rowItems.map((item) => (
+					{rowItems.map((item) => item.effectKind ? (
+						<Item key={item.id} id={item.id} rowId={item.rowId} span={item.span}
+							isSelected={(item.id === selectedAudioId || selectedAudioIds.includes(item.id))} onSelectId={onSelectAudio}
+							variant="audio" waveformGain={item.audioGain}>
+							{item.label}
+						</Item>
+					) : (
 						<AudioItemWithWaveform
 							key={item.id}
 							item={item}
 							span={item.span}
 							waveformSpan={liveSpanPreviewById?.[item.id] ?? item.span}
-							isSelected={item.id === selectedAudioId}
+							isSelected={(item.id === selectedAudioId || selectedAudioIds.includes(item.id))}
 							onSelectAudio={onSelectAudio}
 						/>
 					))}
@@ -911,11 +927,15 @@ export default function TimelineCanvas({
 	onSelectClip,
 	onSelectAnnotation,
 	onSelectAudio,
+	onSelectTrackItems,
 	onSelectCaption,
 	selectedZoomId,
+	selectedZoomIds = [],
 	selectedClipId,
+	selectedClipIds = [],
 	selectedAnnotationId,
 	selectedAudioId,
+	selectedAudioIds = [],
 	selectedCaptionId,
 	selectAllBlocksActive = false,
 	onClearBlockSelection,
@@ -933,6 +953,9 @@ export default function TimelineCanvas({
 	const { clips: clipPresentation } = useTimelinePresentation();
 	const localTimelineRef = useRef<HTMLDivElement | null>(null);
 	const [isSeeking, setIsSeeking] = useState(false);
+	const [marquee, setMarquee] = useState<{ startX: number; startY: number; x: number; y: number } | null>(null);
+	const marqueeStartRef = useRef<{ x: number; y: number } | null>(null);
+	const suppressBlankClickRef = useRef(false);
 	const seekRafRef = useRef<number | null>(null);
 	const pendingSeekClientXRef = useRef<number | null>(null);
 
@@ -946,6 +969,10 @@ export default function TimelineCanvas({
 
 	const handleTimelineClick = useCallback(
 		(e: MouseEvent<HTMLDivElement>) => {
+			if (suppressBlankClickRef.current) {
+				suppressBlankClickRef.current = false;
+				return;
+			}
 			if (isSeeking || (e.target as Element).closest("[data-timeline-item]")) return;
 			if (!onSeek || videoDurationMs <= 0) return;
 
@@ -1009,34 +1036,57 @@ export default function TimelineCanvas({
 			if ((e.target as HTMLElement).closest("[data-timeline-item]")) {
 				return;
 			}
-
-			if (onClearBlockSelection) {
-				onClearBlockSelection();
-			} else {
-				onSelectZoom?.(null);
-				onSelectClip?.(null);
-				onSelectAnnotation?.(null);
-				onSelectAudio?.(null);
-				onSelectCaption?.(null);
-			}
-
-			const rect = localTimelineRef.current.getBoundingClientRect();
-			onSeek(getAbsoluteMsFromClientX(e.clientX, rect) / 1000);
-			setIsSeeking(true);
+			marqueeStartRef.current = { x: e.clientX, y: e.clientY };
+			setMarquee({ startX: e.clientX, startY: e.clientY, x: e.clientX, y: e.clientY });
 			e.preventDefault();
 		},
-		[
-			getAbsoluteMsFromClientX,
-			onClearBlockSelection,
-			onSeek,
-			onSelectAnnotation,
-			onSelectAudio,
-			onSelectCaption,
-			onSelectClip,
-			onSelectZoom,
-			videoDurationMs,
-		],
+		[onSeek, videoDurationMs],
 	);
+
+	useEffect(() => {
+		if (!marquee) return;
+		const handleMove = (event: globalThis.MouseEvent) => {
+			setMarquee((current) => current ? { ...current, x: event.clientX, y: event.clientY } : current);
+		};
+		const handleUp = (event: globalThis.MouseEvent) => {
+			const start = marqueeStartRef.current;
+			marqueeStartRef.current = null;
+			setMarquee(null);
+			if (!start || (Math.abs(event.clientX - start.x) < 4 && Math.abs(event.clientY - start.y) < 4)) return;
+			suppressBlankClickRef.current = true;
+			const left = Math.min(start.x, event.clientX);
+			const right = Math.max(start.x, event.clientX);
+			const top = Math.min(start.y, event.clientY);
+			const bottom = Math.max(start.y, event.clientY);
+			const hits = [...(localTimelineRef.current?.querySelectorAll<HTMLElement>("[data-timeline-item-id]") ?? [])]
+				.filter((element) => {
+					const rect = element.getBoundingClientRect();
+					return rect.left < right && rect.right > left && rect.top < bottom && rect.bottom > top;
+				})
+				.map((element) => ({ id: element.dataset.timelineItemId, kind: element.dataset.variant }))
+				.filter((item): item is { id: string; kind: "zoom" | "clip" | "audio" } =>
+					Boolean(item.id && (item.kind === "zoom" || item.kind === "clip" || item.kind === "audio")),
+				);
+			if (!hits.length) {
+				onClearBlockSelection?.();
+				return;
+			}
+			const counts = new Map<"zoom" | "clip" | "audio", number>();
+			for (const hit of hits) counts.set(hit.kind, (counts.get(hit.kind) ?? 0) + 1);
+			const kind = hits.reduce((best, hit) =>
+				(counts.get(hit.kind) ?? 0) > (counts.get(best) ?? 0) ? hit.kind : best,
+				hits[0].kind,
+			);
+			const ids = [...new Set(hits.filter((item) => item.kind === kind).map((item) => item.id))];
+			onSelectTrackItems?.(kind, ids);
+		};
+		window.addEventListener("mousemove", handleMove);
+		window.addEventListener("mouseup", handleUp, { once: true });
+		return () => {
+			window.removeEventListener("mousemove", handleMove);
+			window.removeEventListener("mouseup", handleUp);
+		};
+	}, [marquee, onClearBlockSelection, onSelectTrackItems]);
 
 	useEffect(() => {
 		if (!isSeeking) return;
@@ -1152,6 +1202,10 @@ export default function TimelineCanvas({
 			onMouseLeave={handleTimelineMouseLeave}
 		>
 			<div aria-hidden="true" style={{ height: TIMELINE_AXIS_HEIGHT_PX, flexShrink: 0 }} />
+			{marquee && (
+				<div className="pointer-events-none absolute z-[90] border border-primary/80 bg-primary/15"
+					style={{ left: Math.min(marquee.startX, marquee.x) - (localTimelineRef.current?.getBoundingClientRect().left ?? 0), top: Math.min(marquee.startY, marquee.y) - (localTimelineRef.current?.getBoundingClientRect().top ?? 0), width: Math.abs(marquee.x - marquee.startX), height: Math.abs(marquee.y - marquee.startY) }} />
+			)}
 			<PlaybackCursor
 				clips={clipPresentation}
 				currentTimeMs={currentTimeMs}
@@ -1186,9 +1240,12 @@ export default function TimelineCanvas({
 					videoDurationMs={videoDurationMs}
 					selectAllBlocksActive={selectAllBlocksActive}
 					selectedZoomId={selectedZoomId}
+					selectedZoomIds={selectedZoomIds}
 					selectedClipId={selectedClipId}
+					selectedClipIds={selectedClipIds}
 					selectedAnnotationId={selectedAnnotationId}
 					selectedAudioId={selectedAudioId}
+					selectedAudioIds={selectedAudioIds}
 					selectedCaptionId={selectedCaptionId}
 					onSelectZoom={onSelectZoom}
 					onSelectClip={onSelectClip}

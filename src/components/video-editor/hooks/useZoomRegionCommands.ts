@@ -1,5 +1,6 @@
 import type { Span } from "dnd-timeline";
 import { type Dispatch, type MutableRefObject, type SetStateAction, useCallback } from "react";
+import { normalizeZoomSoundId, type ZoomSoundId } from "../zoomSounds";
 import {
 	clampFocusToDepth,
 	DEFAULT_AUTO_ZOOM_DEPTH,
@@ -15,7 +16,12 @@ interface UseZoomRegionCommandsParams {
 	setSelectedClipId: Dispatch<SetStateAction<string | null>>;
 	videoPath: string | null;
 	setZoomRegions: Dispatch<SetStateAction<ZoomRegion[]>>;
+	defaultZoomSoundId: ZoomSoundId;
+	defaultZoomPanSoundId: ZoomSoundId;
+	defaultZoomOutSoundId: ZoomSoundId;
 	selectedZoomId: string | null;
+	selectedTrackItems: { kind: "zoom" | "clip" | "audio"; ids: string[] } | null;
+	setSelectedTrackItems: Dispatch<SetStateAction<{ kind: "zoom" | "clip" | "audio"; ids: string[] } | null>>;
 	setSelectedZoomId: Dispatch<SetStateAction<string | null>>;
 	setSelectedAnnotationId: Dispatch<SetStateAction<string | null>>;
 	setSelectedAudioId: Dispatch<SetStateAction<string | null>>;
@@ -30,7 +36,12 @@ export function useZoomRegionCommands({
 	setSelectedClipId,
 	videoPath,
 	setZoomRegions,
+	defaultZoomSoundId,
+	defaultZoomPanSoundId,
+	defaultZoomOutSoundId,
 	selectedZoomId,
+	selectedTrackItems,
+	setSelectedTrackItems,
 	setSelectedZoomId,
 	setSelectedAnnotationId,
 	setSelectedAudioId,
@@ -40,6 +51,9 @@ export function useZoomRegionCommands({
 	autoSuggestedVideoPathRef,
 	pendingFreshRecordingAutoZoomPathRef,
 }: UseZoomRegionCommandsParams) {
+	const selectedIds = selectedTrackItems?.kind === "zoom" && selectedZoomId && selectedTrackItems.ids.includes(selectedZoomId)
+		? selectedTrackItems.ids : selectedZoomId ? [selectedZoomId] : [];
+
 	const handleSelectZoom = useCallback(
 		(id: string | null) => {
 			setSelectedZoomId(id);
@@ -82,6 +96,9 @@ export function useZoomRegionCommands({
 				focus: clampFocusToDepth({ cx: 0.5, cy: 0.5 }, depth),
 				// Mode describes camera tracking behavior, not how the region was created.
 				mode: "auto",
+				soundId: defaultZoomSoundId,
+				panSoundId: defaultZoomPanSoundId,
+				outSoundId: defaultZoomOutSoundId,
 			};
 			markFreshRecordingSuggestion();
 			setZoomRegions((current) => [...current, newRegion]);
@@ -98,6 +115,9 @@ export function useZoomRegionCommands({
 			setSelectedCaptionId,
 			setSelectedZoomId,
 			setZoomRegions,
+			defaultZoomSoundId,
+			defaultZoomPanSoundId,
+			defaultZoomOutSoundId,
 		],
 	);
 
@@ -110,11 +130,14 @@ export function useZoomRegionCommands({
 				depth: DEFAULT_AUTO_ZOOM_DEPTH,
 				focus: clampFocusToDepth(focus, DEFAULT_AUTO_ZOOM_DEPTH),
 				mode: "auto",
+				soundId: defaultZoomSoundId,
+				panSoundId: defaultZoomPanSoundId,
+				outSoundId: defaultZoomOutSoundId,
 			};
 			markFreshRecordingSuggestion();
 			setZoomRegions((current) => [...current, newRegion]);
 		},
-		[markFreshRecordingSuggestion, nextZoomIdRef, setZoomRegions],
+		[markFreshRecordingSuggestion, nextZoomIdRef, setZoomRegions, defaultZoomSoundId, defaultZoomPanSoundId, defaultZoomOutSoundId],
 	);
 
 	const handleZoomSpanChange = useCallback(
@@ -150,31 +173,63 @@ export function useZoomRegionCommands({
 			if (!selectedZoomId) return;
 			setZoomRegions((current) =>
 				current.map((region) =>
-					region.id === selectedZoomId
+					selectedIds.includes(region.id)
 						? { ...region, depth, focus: clampFocusToDepth(region.focus, depth) }
 						: region,
 				),
 			);
 		},
-		[selectedZoomId, setZoomRegions],
+		[selectedZoomId, selectedIds, setZoomRegions],
 	);
 	const handleZoomModeChange = useCallback(
 		(mode: ZoomMode) => {
 			if (!selectedZoomId) return;
 			setZoomRegions((current) =>
 				current.map((region) =>
-					region.id === selectedZoomId ? { ...region, mode } : region,
+					selectedIds.includes(region.id) ? { ...region, mode } : region,
 				),
 			);
 		},
-		[selectedZoomId, setZoomRegions],
+		[selectedZoomId, selectedIds, setZoomRegions],
 	);
+	const handleZoomSoundChange = useCallback((soundId: ZoomSoundId) => {
+		if (!selectedZoomId) return;
+		setZoomRegions((current) => current.map((region) =>
+			selectedIds.includes(region.id) ? { ...region, soundId: normalizeZoomSoundId(soundId) } : region,
+		));
+	}, [selectedZoomId, selectedIds, setZoomRegions]);
+	const handleZoomPanSoundChange = useCallback((panSoundId: ZoomSoundId) => {
+		if (!selectedZoomId) return;
+		setZoomRegions((current) => current.map((region) =>
+			selectedIds.includes(region.id) ? { ...region, panSoundId: normalizeZoomSoundId(panSoundId) } : region,
+		));
+	}, [selectedZoomId, selectedIds, setZoomRegions]);
+	const handleZoomOutSoundChange = useCallback((outSoundId: ZoomSoundId) => {
+		if (!selectedZoomId) return;
+		setZoomRegions((current) => current.map((region) =>
+			selectedIds.includes(region.id) ? { ...region, outSoundId: normalizeZoomSoundId(outSoundId) } : region,
+		));
+	}, [selectedZoomId, selectedIds, setZoomRegions]);
+	const handleApplyZoomSoundToAll = useCallback(() => {
+		if (!selectedZoomId) return;
+		setZoomRegions((current) => {
+			const selected = current.find((region) => region.id === selectedZoomId);
+			const soundId = normalizeZoomSoundId(selected?.soundId);
+			const panSoundId = normalizeZoomSoundId(selected?.panSoundId);
+			const outSoundId = normalizeZoomSoundId(selected?.outSoundId);
+			return current.map((region) => ({ ...region, soundId, panSoundId, outSoundId }));
+		});
+	}, [selectedZoomId, selectedIds, setZoomRegions]);
 	const handleZoomDelete = useCallback(
 		(id: string) => {
-			setZoomRegions((current) => current.filter((region) => region.id !== id));
-			if (selectedZoomId === id) setSelectedZoomId(null);
+			const ids = selectedIds.includes(id) ? selectedIds : [id];
+			setZoomRegions((current) => current.filter((region) => !ids.includes(region.id)));
+			if (selectedZoomId && ids.includes(selectedZoomId)) {
+				setSelectedZoomId(null);
+				setSelectedTrackItems(null);
+			}
 		},
-		[selectedZoomId, setSelectedZoomId, setZoomRegions],
+		[selectedIds, selectedZoomId, setSelectedTrackItems, setSelectedZoomId, setZoomRegions],
 	);
 	const handleClearAllZooms = useCallback(() => {
 		setZoomRegions([]);
@@ -190,6 +245,10 @@ export function useZoomRegionCommands({
 		handleZoomFocusChange,
 		handleZoomDepthChange,
 		handleZoomModeChange,
+		handleZoomSoundChange,
+		handleZoomPanSoundChange,
+		handleZoomOutSoundChange,
+		handleApplyZoomSoundToAll,
 		handleZoomDelete,
 		handleClearAllZooms,
 	};

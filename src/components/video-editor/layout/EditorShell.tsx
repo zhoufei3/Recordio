@@ -250,11 +250,7 @@ export function EditorShell(props: Props) {
 				projectNameInputRef={ui.projectNameInputRef}
 				projectDisplayName={snapshot.projectDisplayName}
 				hasUnsavedChanges={hasUnsavedChanges}
-				canUndo={history.canUndo}
-				canRedo={history.canRedo}
 				handleOpenProjectBrowser={openActions.handleOpenProjectBrowser}
-				handleUndo={history.handleUndo}
-				handleRedo={history.handleRedo}
 				handleProjectNameSubmit={saveActions.handleProjectNameSubmit}
 				closeProjectNameEditor={saveActions.closeProjectNameEditor}
 				presets={presets}
@@ -366,6 +362,10 @@ export function EditorShell(props: Props) {
 						projection={projection}
 						playback={playback}
 						zoomCommands={zoomCommands}
+						canUndo={history.canUndo}
+						canRedo={history.canRedo}
+						handleUndo={history.handleUndo}
+						handleRedo={history.handleRedo}
 						annotationCommands={annotationCommands}
 						effectiveCursorTelemetry={cursor.effectiveCursorTelemetry}
 						effectiveShowCursor={effectiveShowCursor}
@@ -385,6 +385,7 @@ export function EditorShell(props: Props) {
 					panelRef={timelinePanelRef}
 					timelineRef={ui.timelineRef}
 					timeline={timeline}
+					appearance={appearance}
 					projection={projection}
 					playback={playback}
 					audio={audio}

@@ -13,9 +13,15 @@ import type {
 import { isValidMp4FrameRate } from "@/lib/exporter/types";
 import { DEFAULT_WALLPAPER_PATH } from "@/lib/wallpapers";
 import { ASPECT_RATIOS, type AspectRatio, isCustomAspectRatio } from "@/utils/aspectRatioUtils";
-import { closeClipGaps, rippleRegionAnchors, rippleRegions } from "./clipSequence";
+import {
+	closeClipGaps,
+	rippleEffectAudioStartOverrides,
+	rippleRegionAnchors,
+	rippleRegions,
+} from "./clipSequence";
 import { CURSOR_MOTION_PRESETS, resolveCursorMotionPresetId } from "./cursorMotionPresets";
 import { normalizeClickSoundId, type ClickSoundId } from "./clickSounds";
+import { normalizeZoomSoundId, type ZoomSoundId } from "./zoomSounds";
 import {
 	ADVANCED_VERTICAL_PADDING_MAX,
 	type AnnotationRegion,
@@ -43,6 +49,11 @@ import {
 	DEFAULT_CURSOR_CLICK_EFFECT_OPACITY,
 	DEFAULT_CURSOR_CLICK_EFFECT_SCALE,
 	DEFAULT_CURSOR_MOTION_BLUR,
+	DEFAULT_CURSOR_TRAIL_COLOR,
+	DEFAULT_CURSOR_TRAIL_DURATION_MS,
+	DEFAULT_CURSOR_TRAIL_ENABLED,
+	DEFAULT_CURSOR_TRAIL_LENGTH,
+	DEFAULT_CURSOR_TRAIL_SIZE,
 	DEFAULT_CURSOR_STYLE,
 	DEFAULT_CURSOR_SWAY,
 	DEFAULT_FIGURE_DATA,
@@ -100,6 +111,9 @@ export interface ProjectEditorState {
 	zoomMotionBlur: number;
 	zoomMotionBlurTuning: ZoomMotionBlurTuning;
 	connectZooms: boolean;
+	defaultZoomSoundId: ZoomSoundId;
+	defaultZoomPanSoundId: ZoomSoundId;
+	defaultZoomOutSoundId: ZoomSoundId;
 	zoomInDurationMs: number;
 	zoomInOverlapMs: number;
 	zoomOutDurationMs: number;
@@ -130,6 +144,11 @@ export interface ProjectEditorState {
 	zoomSmoothness: number;
 	zoomClassicMode: boolean;
 	cursorMotionBlur: number;
+	cursorTrailEnabled: boolean;
+	cursorTrailSize: number;
+	cursorTrailLength: number;
+	cursorTrailDurationMs: number;
+	cursorTrailColor: string;
 	cursorClickBounce: number;
 	cursorClickBounceDuration: number;
 	cursorSway: number;
@@ -146,6 +165,9 @@ export interface ProjectEditorState {
 	speedRegions: SpeedRegion[];
 	annotationRegions: AnnotationRegion[];
 	audioRegions: AudioRegion[];
+	effectAudioVolumes?: Record<string, number>;
+	effectAudioStartOverrides?: Record<string, number>;
+	disabledEffectAudioIds?: string[];
 	autoCaptions: CaptionCue[];
 	autoCaptionSettings: AutoCaptionSettings;
 	webcam: WebcamOverlaySettings;
@@ -454,6 +476,9 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 							region.mode === "auto" || region.mode === "manual"
 								? region.mode
 								: undefined,
+						soundId: normalizeZoomSoundId(region.soundId),
+						panSoundId: normalizeZoomSoundId(region.panSoundId),
+						outSoundId: normalizeZoomSoundId(region.outSoundId),
 					};
 				})
 		: [];
@@ -686,6 +711,18 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 					};
 				})
 		: [];
+	const normalizedEffectAudioVolumes = Object.fromEntries(
+		Object.entries(editor.effectAudioVolumes ?? {})
+			.filter(([id, volume]) => (id.startsWith("click-sound-") || id.startsWith("zoom-sound-")) && isFiniteNumber(volume))
+			.map(([id, volume]) => [id, clamp(volume, 0, 1)]),
+	);
+	const normalizedEffectAudioStartOverrides = Object.fromEntries(
+		Object.entries(editor.effectAudioStartOverrides ?? {})
+			.filter(([id, start]) => (id.startsWith("click-sound-") || id.startsWith("zoom-sound-")) && isFiniteNumber(start))
+			.map(([id, start]) => [id, Math.max(0, Math.round(start))]),
+	);
+	const normalizedDisabledEffectAudioIds = [...new Set(editor.disabledEffectAudioIds ?? [])]
+		.filter((id) => id.startsWith("click-sound-") || id.startsWith("zoom-sound-"));
 
 	const normalizedAutoCaptions: CaptionCue[] = Array.isArray(
 		(editor as Partial<ProjectEditorState>).autoCaptions,
@@ -855,7 +892,7 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 			? clamp(
 					(editor as Partial<ProjectEditorState>).cursorClickBounceDuration as number,
 					60,
-					500,
+					1000,
 				)
 			: DEFAULT_MOTION_PRESET.cursorClickBounceDuration,
 	};
@@ -892,6 +929,9 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 		zoomMotionBlur: normalizedZoomMotionBlur,
 		zoomMotionBlurTuning: normalizedZoomMotionBlurTuning,
 		connectZooms: typeof editor.connectZooms === "boolean" ? editor.connectZooms : true,
+		defaultZoomSoundId: normalizeZoomSoundId(editor.defaultZoomSoundId),
+		defaultZoomPanSoundId: normalizeZoomSoundId(editor.defaultZoomPanSoundId),
+		defaultZoomOutSoundId: normalizeZoomSoundId(editor.defaultZoomOutSoundId),
 		zoomInDurationMs: normalizedMotionPreset.zoomInDurationMs,
 		zoomInOverlapMs: normalizedZoomInOverlapMs,
 		zoomOutDurationMs: normalizedMotionPreset.zoomOutDurationMs,
@@ -935,6 +975,15 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 		zoomClassicMode:
 			typeof editor.zoomClassicMode === "boolean" ? editor.zoomClassicMode : false,
 		cursorMotionBlur: DEFAULT_CURSOR_MOTION_BLUR,
+		cursorTrailEnabled: typeof (editor as Partial<ProjectEditorState>).cursorTrailEnabled === "boolean"
+			? (editor as Partial<ProjectEditorState>).cursorTrailEnabled as boolean : DEFAULT_CURSOR_TRAIL_ENABLED,
+		cursorTrailSize: isFiniteNumber((editor as Partial<ProjectEditorState>).cursorTrailSize)
+			? clamp((editor as Partial<ProjectEditorState>).cursorTrailSize as number, 0.2, 2) : DEFAULT_CURSOR_TRAIL_SIZE,
+		cursorTrailLength: isFiniteNumber((editor as Partial<ProjectEditorState>).cursorTrailLength)
+			? Math.round(clamp((editor as Partial<ProjectEditorState>).cursorTrailLength as number, 2, 30)) : DEFAULT_CURSOR_TRAIL_LENGTH,
+		cursorTrailDurationMs: isFiniteNumber((editor as Partial<ProjectEditorState>).cursorTrailDurationMs)
+			? clamp((editor as Partial<ProjectEditorState>).cursorTrailDurationMs as number, 80, 1200) : DEFAULT_CURSOR_TRAIL_DURATION_MS,
+		cursorTrailColor: normalizeCursorClickEffectColor((editor as Partial<ProjectEditorState>).cursorTrailColor, DEFAULT_CURSOR_TRAIL_COLOR),
 		cursorClickBounce: normalizedMotionPreset.cursorClickBounce,
 		cursorClickBounceDuration: normalizedMotionPreset.cursorClickBounceDuration,
 		cursorSway: isFiniteNumber((editor as Partial<ProjectEditorState>).cursorSway)
@@ -997,6 +1046,15 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 		audioRegions: sequenceChanged
 			? rippleRegionAnchors(normalizedAudioRegions, normalizedClipRegions, sequenceClips)
 			: normalizedAudioRegions,
+		effectAudioVolumes: normalizedEffectAudioVolumes,
+		effectAudioStartOverrides: sequenceChanged
+			? rippleEffectAudioStartOverrides(
+					normalizedEffectAudioStartOverrides,
+					normalizedClipRegions,
+					sequenceClips,
+				)
+			: normalizedEffectAudioStartOverrides,
+		disabledEffectAudioIds: normalizedDisabledEffectAudioIds,
 		autoCaptions: normalizedAutoCaptions,
 		autoCaptionSettings: normalizedAutoCaptionSettings,
 		webcam: {

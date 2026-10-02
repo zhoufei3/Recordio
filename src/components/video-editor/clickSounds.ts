@@ -11,6 +11,7 @@ import sound10 from "@/assets/click-sounds/10.wav";
 import sound11 from "@/assets/click-sounds/11.wav";
 import sound12 from "@/assets/click-sounds/12.wav";
 import sound13 from "@/assets/click-sounds/13.wav";
+import { getCustomSounds } from "./customSounds";
 import {
 	getClipSourceEndMs,
 	getClipSourceStartMs,
@@ -35,10 +36,14 @@ export const CLICK_SOUNDS = [
 	{ id: "click-13", url: sound13, durationMs: 125 },
 ] as const;
 
-export type ClickSoundId = "none" | (typeof CLICK_SOUNDS)[number]["id"];
+export type ClickSoundId = "none" | string;
+
+export function getAvailableClickSounds() {
+	return [...CLICK_SOUNDS, ...getCustomSounds("click")];
+}
 
 export function normalizeClickSoundId(value: unknown): ClickSoundId {
-	return CLICK_SOUNDS.find((sound) => sound.id === value)?.id ?? "none";
+	return getAvailableClickSounds().find((sound) => sound.id === value)?.id ?? "none";
 }
 
 export function buildClickSoundRegions(
@@ -56,7 +61,7 @@ export function buildClickSoundRegions(
 				: point.interactionType === "click" || point.interactionType === "double-click"
 					? leftSoundId
 					: "none";
-		const sound = CLICK_SOUNDS.find((item) => item.id === selected);
+		const sound = getAvailableClickSounds().find((item) => item.id === selected);
 		if (!sound) continue;
 		const matchingClips = clips.length
 			? clips.filter(
@@ -76,6 +81,7 @@ export function buildClickSoundRegions(
 			if (endMs <= startMs) continue;
 			regions.push({
 				id: `click-sound-${index}-${clipIndex}`,
+				label: point.interactionType === "right-click" ? "右键点击音效" : "左键点击音效",
 				startMs,
 				endMs,
 				audioPath: sound.url,

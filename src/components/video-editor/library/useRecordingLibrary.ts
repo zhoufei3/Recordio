@@ -2,7 +2,12 @@ import type { useAppearanceState } from "../state/useAppearanceState";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "@/components/ui/toast";
 import type { RecordingLibraryEntry } from "@/types/recordingLibrary";
-import { packClipSequence, rippleRegionAnchors, rippleRegions } from "../clipSequence";
+import {
+	packClipSequence,
+	rippleEffectAudioStartOverrides,
+	rippleRegionAnchors,
+	rippleRegions,
+} from "../clipSequence";
 import {
 	type ZoomRegion,
 	sortClipRegions,
@@ -206,6 +211,9 @@ export function useRecordingLibrary(
 			]);
 			timeline.setAnnotationRegions((current) => rippleRegions(current, before, sequence));
 			timeline.setAudioRegions((current) => rippleRegionAnchors(current, before, sequence));
+			timeline.setEffectAudioStartOverrides((current) =>
+				rippleEffectAudioStartOverrides(current, before, sequence),
+			);
 			timeline.setSelectedClipId(id);
 			if (media.webcam)
 				appearance.setWebcam((previous) => ({

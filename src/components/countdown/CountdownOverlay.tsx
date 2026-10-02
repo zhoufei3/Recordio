@@ -7,16 +7,19 @@ import { useI18n } from "@/contexts/I18nContext";
 export function CountdownOverlay() {
 	const { t } = useI18n();
 	const [countdown, setCountdown] = useState<number | null>(null);
+	const [mode, setMode] = useState<"editor" | "standard" | null>(null);
 
 	useEffect(() => {
 		void window.electronAPI.getActiveCountdown().then((result) => {
 			if (result.success && typeof result.seconds === "number") {
 				setCountdown(result.seconds);
+				setMode(result.mode ?? null);
 			}
 		});
 
-		const cleanup = window.electronAPI.onCountdownTick((seconds: number) => {
+		const cleanup = window.electronAPI.onCountdownTick((seconds, nextMode) => {
 			setCountdown(seconds);
+			setMode(nextMode ?? null);
 		});
 
 		return cleanup;
@@ -46,13 +49,23 @@ export function CountdownOverlay() {
 
 	return (
 		<div className="fixed inset-0 flex items-center justify-center" onClick={handleCancel}>
-			<Card className="size-44 items-center justify-center gap-1" aria-live="assertive">
+			<Card className="size-48 items-center justify-center gap-2" aria-live="assertive">
 				<span
 					className="text-[5.5rem] font-bold leading-none tabular-nums tracking-[-0.07em]"
 					style={{ fontFamily: 'Bahnschrift, "DIN Alternate", "DM Sans", sans-serif' }}
 				>
 					{countdown}
 				</span>
+				{mode && (
+					<span className="text-xl font-bold text-accent">
+						{t(
+							mode === "editor"
+								? "launch.recording.modeEditor"
+								: "launch.recording.modeStandard",
+							mode === "editor" ? "Presentation recording" : "Standard recording",
+						)}
+					</span>
+				)}
 				<Button
 					variant="ghost"
 					size="sm"

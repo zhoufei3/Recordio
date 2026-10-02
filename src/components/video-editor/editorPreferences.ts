@@ -18,6 +18,9 @@ type PersistedEditorControls = Pick<
 	| "zoomMotionBlur"
 	| "zoomMotionBlurTuning"
 	| "connectZooms"
+	| "defaultZoomSoundId"
+	| "defaultZoomPanSoundId"
+	| "defaultZoomOutSoundId"
 	| "zoomInDurationMs"
 	| "zoomInOverlapMs"
 	| "zoomOutDurationMs"
@@ -38,6 +41,11 @@ type PersistedEditorControls = Pick<
 	| "cameraSpringDampingMultiplier"
 	| "cameraSpringMassMultiplier"
 	| "cursorMotionBlur"
+	| "cursorTrailEnabled"
+	| "cursorTrailSize"
+	| "cursorTrailLength"
+	| "cursorTrailDurationMs"
+	| "cursorTrailColor"
 	| "cursorClickEffect"
 	| "cursorClickEffectColor"
 	| "cursorClickEffectScale"
@@ -112,6 +120,9 @@ export const DEFAULT_EDITOR_PREFERENCES: EditorPreferences = {
 	zoomMotionBlur: DEFAULT_EDITOR_CONTROLS.zoomMotionBlur,
 	zoomMotionBlurTuning: DEFAULT_EDITOR_CONTROLS.zoomMotionBlurTuning,
 	connectZooms: DEFAULT_EDITOR_CONTROLS.connectZooms,
+	defaultZoomSoundId: DEFAULT_EDITOR_CONTROLS.defaultZoomSoundId,
+	defaultZoomPanSoundId: DEFAULT_EDITOR_CONTROLS.defaultZoomPanSoundId,
+	defaultZoomOutSoundId: DEFAULT_EDITOR_CONTROLS.defaultZoomOutSoundId,
 	zoomInDurationMs: DEFAULT_EDITOR_CONTROLS.zoomInDurationMs,
 	zoomInOverlapMs: DEFAULT_EDITOR_CONTROLS.zoomInOverlapMs,
 	zoomOutDurationMs: DEFAULT_EDITOR_CONTROLS.zoomOutDurationMs,
@@ -132,6 +143,11 @@ export const DEFAULT_EDITOR_PREFERENCES: EditorPreferences = {
 	cameraSpringDampingMultiplier: DEFAULT_EDITOR_CONTROLS.cameraSpringDampingMultiplier,
 	cameraSpringMassMultiplier: DEFAULT_EDITOR_CONTROLS.cameraSpringMassMultiplier,
 	cursorMotionBlur: DEFAULT_EDITOR_CONTROLS.cursorMotionBlur,
+	cursorTrailEnabled: DEFAULT_EDITOR_CONTROLS.cursorTrailEnabled,
+	cursorTrailSize: DEFAULT_EDITOR_CONTROLS.cursorTrailSize,
+	cursorTrailLength: DEFAULT_EDITOR_CONTROLS.cursorTrailLength,
+	cursorTrailDurationMs: DEFAULT_EDITOR_CONTROLS.cursorTrailDurationMs,
+	cursorTrailColor: DEFAULT_EDITOR_CONTROLS.cursorTrailColor,
 	cursorClickEffect: DEFAULT_EDITOR_CONTROLS.cursorClickEffect,
 	cursorClickEffectColor: DEFAULT_EDITOR_CONTROLS.cursorClickEffectColor,
 	cursorClickEffectScale: DEFAULT_EDITOR_CONTROLS.cursorClickEffectScale,
@@ -314,6 +330,9 @@ function normalizeEditorControls(
 		backgroundBlur: sanitizedRaw.backgroundBlur ?? fallback.backgroundBlur,
 		zoomMotionBlur: sanitizedRaw.zoomMotionBlur ?? fallback.zoomMotionBlur,
 		connectZooms: sanitizedRaw.connectZooms ?? fallback.connectZooms,
+		defaultZoomSoundId: sanitizedRaw.defaultZoomSoundId ?? fallback.defaultZoomSoundId,
+		defaultZoomPanSoundId: sanitizedRaw.defaultZoomPanSoundId ?? fallback.defaultZoomPanSoundId,
+		defaultZoomOutSoundId: sanitizedRaw.defaultZoomOutSoundId ?? fallback.defaultZoomOutSoundId,
 		zoomInDurationMs: sanitizedRaw.zoomInDurationMs ?? fallback.zoomInDurationMs,
 		zoomInOverlapMs: sanitizedRaw.zoomInOverlapMs ?? fallback.zoomInOverlapMs,
 		zoomOutDurationMs: sanitizedRaw.zoomOutDurationMs ?? fallback.zoomOutDurationMs,
@@ -343,6 +362,11 @@ function normalizeEditorControls(
 		cameraSpringMassMultiplier:
 			sanitizedRaw.cameraSpringMassMultiplier ?? fallback.cameraSpringMassMultiplier,
 		cursorMotionBlur: sanitizedRaw.cursorMotionBlur ?? fallback.cursorMotionBlur,
+		cursorTrailEnabled: sanitizedRaw.cursorTrailEnabled ?? fallback.cursorTrailEnabled,
+		cursorTrailSize: sanitizedRaw.cursorTrailSize ?? fallback.cursorTrailSize,
+		cursorTrailLength: sanitizedRaw.cursorTrailLength ?? fallback.cursorTrailLength,
+		cursorTrailDurationMs: sanitizedRaw.cursorTrailDurationMs ?? fallback.cursorTrailDurationMs,
+		cursorTrailColor: sanitizedRaw.cursorTrailColor ?? fallback.cursorTrailColor,
 		cursorClickEffect: sanitizedRaw.cursorClickEffect ?? fallback.cursorClickEffect,
 		cursorClickEffectColor:
 			sanitizedRaw.cursorClickEffectColor ?? fallback.cursorClickEffectColor,
@@ -394,6 +418,9 @@ function normalizeEditorControls(
 		zoomMotionBlur: normalized.zoomMotionBlur,
 		zoomMotionBlurTuning: normalized.zoomMotionBlurTuning,
 		connectZooms: normalized.connectZooms,
+		defaultZoomSoundId: normalized.defaultZoomSoundId,
+		defaultZoomPanSoundId: normalized.defaultZoomPanSoundId,
+		defaultZoomOutSoundId: normalized.defaultZoomOutSoundId,
 		zoomInDurationMs: normalized.zoomInDurationMs,
 		zoomInOverlapMs: normalized.zoomInOverlapMs,
 		zoomOutDurationMs: normalized.zoomOutDurationMs,
@@ -414,6 +441,11 @@ function normalizeEditorControls(
 		cameraSpringDampingMultiplier: normalized.cameraSpringDampingMultiplier,
 		cameraSpringMassMultiplier: normalized.cameraSpringMassMultiplier,
 		cursorMotionBlur: normalized.cursorMotionBlur,
+		cursorTrailEnabled: normalized.cursorTrailEnabled,
+		cursorTrailSize: normalized.cursorTrailSize,
+		cursorTrailLength: normalized.cursorTrailLength,
+		cursorTrailDurationMs: normalized.cursorTrailDurationMs,
+		cursorTrailColor: normalized.cursorTrailColor,
 		cursorClickEffect: normalized.cursorClickEffect,
 		cursorClickEffectColor: normalized.cursorClickEffectColor,
 		cursorClickEffectScale: normalized.cursorClickEffectScale,

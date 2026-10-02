@@ -239,7 +239,16 @@ interface Window {
 		getAssetBasePath: () => Promise<string | null>;
 		getSources: (opts: Electron.SourcesOptions) => Promise<ProcessedDesktopSource[]>;
 		showProjectDashboard: () => Promise<void>;
-		switchToEditor: () => Promise<void>;
+		switchToEditor: (recordingLaunch?: {
+			videoPath: string;
+			webcamPath?: string | null;
+			timeOffsetMs?: number;
+		}) => Promise<void>;
+		consumeRecordingEditorLaunch: () => Promise<{
+			videoPath: string;
+			webcamPath: string | null;
+			timeOffsetMs: number;
+		} | null>;
 		openSourceSelector: () => Promise<void>;
 		selectSource: (source: ProcessedDesktopSource) => Promise<ProcessedDesktopSource>;
 		showSourceHighlight: (source: ProcessedDesktopSource) => Promise<{ success: boolean }>;
@@ -311,6 +320,8 @@ interface Window {
 		storeRecordedVideo: (
 			videoData: ArrayBuffer,
 			fileName: string,
+			withEditorMetadata?: boolean,
+			transcodeToMp4?: boolean,
 		) => Promise<{ success: boolean; path?: string; message?: string }>;
 		storeMicrophoneSidecar: (
 			audioData: ArrayBuffer,
@@ -597,7 +608,7 @@ interface Window {
 			startDelayMsByPath?: Record<string, number>;
 			error?: string;
 		}>;
-		setRecordingState: (recording: boolean) => Promise<void>;
+		setRecordingState: (recording: boolean, captureCursorTelemetry?: boolean) => Promise<void>;
 		getCursorTelemetry: (videoPath?: string) => Promise<{
 			success: boolean;
 			samples: CursorTelemetryPoint[];
@@ -692,6 +703,14 @@ interface Window {
 			error?: string;
 		}>;
 		openAudioFilePicker: () => Promise<{ success: boolean; path?: string; canceled?: boolean }>;
+		importEditorSound: () => Promise<{
+			success: boolean;
+			path?: string;
+			name?: string;
+			canceled?: boolean;
+			error?: string;
+		}>;
+		deleteEditorSound: (filePath: string) => Promise<{ success: boolean; error?: string }>;
 		openWhisperExecutablePicker: () => Promise<{
 			success: boolean;
 			path?: string;
@@ -989,6 +1008,7 @@ interface Window {
 		saveShortcuts: (shortcuts: unknown) => Promise<{ success: boolean; error?: string }>;
 		getAppSetting: (key: string) => unknown;
 		setAppSetting: (key: string, value: unknown) => boolean;
+		resetAppSettings: () => Promise<{ success: boolean; error?: string }>;
 		setHasUnsavedChanges: (hasChanges: boolean) => void;
 		onRequestSaveBeforeClose: (callback: () => Promise<boolean>) => () => void;
 		isNativeWindowsCaptureAvailable: () => Promise<{ available: boolean }>;
@@ -1028,10 +1048,19 @@ interface Window {
 		getCountdownDelay: () => Promise<{ success: boolean; delay: number }>;
 		setCountdownDelay: (delay: number) => Promise<{ success: boolean; error?: string }>;
 		finishRecordingStartup: () => Promise<void>;
-		startCountdown: (seconds: number) => Promise<{ success: boolean; cancelled?: boolean }>;
+		startCountdown: (
+			seconds: number,
+			mode?: "editor" | "standard",
+		) => Promise<{ success: boolean; cancelled?: boolean }>;
 		cancelCountdown: () => Promise<{ success: boolean }>;
-		getActiveCountdown: () => Promise<{ success: boolean; seconds: number | null }>;
-		onCountdownTick: (callback: (seconds: number) => void) => () => void;
+		getActiveCountdown: () => Promise<{
+			success: boolean;
+			seconds: number | null;
+			mode?: "editor" | "standard" | null;
+		}>;
+		onCountdownTick: (
+			callback: (seconds: number, mode?: "editor" | "standard") => void,
+		) => () => void;
 	};
 }
 

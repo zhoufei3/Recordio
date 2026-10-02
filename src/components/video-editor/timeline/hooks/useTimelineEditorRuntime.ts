@@ -1,6 +1,6 @@
 import type { Span } from "dnd-timeline";
 import type { ForwardedRef, RefObject } from "react";
-import { useCallback, useImperativeHandle } from "react";
+import { useCallback, useImperativeHandle, useMemo } from "react";
 import type {
 	AnnotationRegion,
 	AudioRegion,
@@ -39,7 +39,7 @@ interface UseTimelineEditorRuntimeParams {
 	onZoomSpanChange: (id: string, span: Span) => void;
 	onZoomDelete: (id: string) => void;
 	selectedZoomId: string | null;
-	onSelectZoom: (id: string | null) => void;
+	onSelectZoom: (id: string | null, additive?: boolean) => void;
 	trimRegions: TrimRegion[];
 	onTrimSpanChange?: (id: string, span: Span) => void;
 	clipRegions: ClipRegion[];
@@ -47,7 +47,7 @@ interface UseTimelineEditorRuntimeParams {
 	onClipSpanChange?: (id: string, span: ClipSequenceSpan) => void;
 	onClipDelete?: (id: string) => void;
 	selectedClipId?: string | null;
-	onSelectClip?: (id: string | null) => void;
+	onSelectClip?: (id: string | null, additive?: boolean) => void;
 	annotationRegions: AnnotationRegion[];
 	onAnnotationAdded?: (span: Span, trackIndex?: number) => void;
 	onAnnotationSpanChange?: (id: string, span: Span, trackIndex?: number) => void;
@@ -61,7 +61,7 @@ interface UseTimelineEditorRuntimeParams {
 	onAudioSpanChange?: (id: string, span: Span, trackIndex?: number) => void;
 	onAudioDelete?: (id: string) => void;
 	selectedAudioId?: string | null;
-	onSelectAudio?: (id: string | null) => void;
+	onSelectAudio?: (id: string | null, additive?: boolean) => void;
 	captionCues: CaptionCue[];
 	onCaptionSpanChange?: (id: string, span: Span) => void;
 	onCaptionDelete?: (id: string) => void;
@@ -170,13 +170,17 @@ export function useTimelineEditorRuntime({
 		onSelectCaption,
 	});
 
+	const normalizableAudioRegions = useMemo(
+		() => audioRegions.filter((region) => !region.effectKind),
+		[audioRegions],
+	);
 	useTimelineNormalization({
 		totalMs,
 		safeMinDurationMs,
 		zoomRegions,
 		trimRegions,
 		speedRegions,
-		audioRegions,
+		audioRegions: normalizableAudioRegions,
 		onZoomSpanChange,
 		onTrimSpanChange,
 		onSpeedSpanChange,

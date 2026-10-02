@@ -1,6 +1,11 @@
 /* biome-ignore-all lint/correctness/useExhaustiveDependencies: mutable timeline bootstrap refs intentionally do not trigger effects. */
 import { type MutableRefObject, useCallback, useEffect, useMemo } from "react";
-import { closeClipGaps, rippleRegionAnchors, rippleRegions } from "../clipSequence";
+import {
+	closeClipGaps,
+	rippleEffectAudioStartOverrides,
+	rippleRegionAnchors,
+	rippleRegions,
+} from "../clipSequence";
 import { projectCaptionCues } from "../captionTimeline";
 import { deriveNextId } from "../projectPersistence";
 import type { useTimelineState } from "../state/useTimelineState";
@@ -69,6 +74,9 @@ export function useTimelineProjection({
 					);
 					timeline.setAudioRegions((current) =>
 						rippleRegionAnchors(current, nextRegions, sequence),
+					);
+					timeline.setEffectAudioStartOverrides((current) =>
+						rippleEffectAudioStartOverrides(current, nextRegions, sequence),
 					);
 				}
 			}

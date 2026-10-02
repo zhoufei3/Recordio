@@ -16,7 +16,7 @@ export function useEditorPlaybackControls({
 	timelinePlayheadTime,
 	timelineDuration,
 }: UseEditorPlaybackControlsParams) {
-	const [stepIndex, setStepIndex] = useState(10);
+	const [stepIndex, setStepIndex] = useState(1);
 	const stepOptions = [1 / 60, 5 / 60, 10 / 60, 20 / 60, 30 / 60, 60 / 60, 1, 2, 3, 4, 5, 10];
 	const stepSeconds = stepOptions[stepIndex];
 	const getActivePlayback = useCallback(() => videoPlaybackRef.current, [videoPlaybackRef]);

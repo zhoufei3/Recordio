@@ -1,4 +1,5 @@
 {
+	"multiSelectHint": "已选择 {{count}} 个项目，设置将应用到全部选中项。",
 	"zoom": {
 		"level": "缩放级别",
 		"selectRegion": "选择缩放区域以调整",
@@ -6,7 +7,20 @@
 		"modeAuto": "自动",
 		"modeManual": "手动",
 		"modeManualDescription": "为此缩放设置固定焦点",
-		"modeAutoDescription": "镜头会自动跟随光标"
+		"modeAutoDescription": "镜头会自动跟随光标",
+		"sound": "缩放音效",
+		"defaultSoundsTitle": "全局缩放音效",
+		"defaultSoundsDescription": "更改后应用到所有缩放模块；单个缩放模块仍可单独设置并随项目保存。",
+		"soundIn": "进入缩放",
+		"soundPan": "镜头移动",
+		"soundOut": "退出缩放",
+		"soundNone": "无音效",
+		"applySoundToAll": "应用到全部缩放块",
+		"sounds": {
+			"zoom-1": "翻页", "zoom-2": "转场", "zoom-3": "推进", "zoom-4": "轻扫一",
+			"zoom-5": "轻扫二", "zoom-6": "柔和呼啸", "zoom-7": "连续扫动", "zoom-8": "快速掠过",
+			"zoom-9": "呼啸一", "zoom-10": "呼啸二", "zoom-11": "呼啸三"
+		}
 	},
 	"trim": {
 		"deleteRegion": "删除修剪区域"
@@ -104,6 +118,14 @@
 			"elastic-vivid": {
 				"label": "跃动",
 				"description": "更鲜明的回弹，适合活泼的演示画面。"
+			},
+			"elastic-bold": {
+				"label": "强力回弹",
+				"description": "更明显的镜头与光标回弹，同时保持缩放过渡顺滑。"
+			},
+			"elastic-ripple": {
+				"label": "涟漪回弹",
+				"description": "更强的弹簧回弹，点击时伴随扩散波纹。"
 			}
 		},
 		"zoomInDuration": "进入时长",
@@ -122,6 +144,13 @@
 			"linear": "线性"
 		},
 		"cursorSize": "光标大小",
+		"cursorTrail": {
+			"title": "光标拖影",
+			"size": "拖影大小",
+			"length": "拖影长短",
+			"duration": "持续时间",
+			"color": "拖影颜色"
+		},
 		"cursorSmoothing": "光标平滑",
 		"cursorSpringStiffness": "光标弹簧刚度",
 		"cursorSpringDamping": "光标弹簧阻尼",
@@ -160,6 +189,7 @@
 			"left": "左键点击音效",
 			"right": "右键点击音效",
 			"none": "关闭",
+			"restoreDeleted": "恢复已删除的点击音效",
 			"sound1": "清脆",
 			"sound2": "轻巧",
 			"sound3": "柔和",
@@ -170,9 +200,9 @@
 			"sound8": "颗粒",
 			"sound9": "复古",
 			"sound10": "回响",
-			"sound11": "真实鼠标·轻触",
-			"sound12": "真实鼠标·机械",
-			"sound13": "真实鼠标·清脆"
+			"sound11": "轻触",
+			"sound12": "机械",
+			"sound13": "清脆"
 		},
 		"cursorMotionBlur": "光标运动模糊",
 		"cursorClickBounce": "光标点击弹跳",
@@ -227,6 +257,7 @@
 		"cursorSpringMassMultiplier": "弹簧质量"
 	},
 	"sections": {
+		"cursorSound": "声音",
 		"scene": "场景",
 		"captions": "字幕",
 		"caption": "字幕编辑",
@@ -350,8 +381,16 @@
 		"starOnGithub": "在 GitHub 上点星"
 	},
 	"audio": {
+		"importCustomSound": "导入自定义音效",
+		"customSound": "自定义音效",
+		"customSoundImportFailed": "无法导入音效",
+		"customSoundDeleteFailed": "无法删除音效",
+		"removeCustomSound": "删除自定义音效",
+		"deleteEffectSound": "删除音效",
 		"title": "音频",
 		"volumeTitle": "音频",
+		"clickEffectTitle": "鼠标点击音效",
+		"zoomEffectTitle": "缩放音效",
 		"volume": "音量",
 		"normalize": "标准化",
 		"sourceTracksTitle": "剪辑源音频",
@@ -382,7 +421,11 @@
 		"projectsRefreshHint": "命名项目会自动保存。返回项目页时，预览图会刷新。",
 		"changeRecordingsFolderFailed": "无法更改录制文件夹",
 		"updateCaptureProtectionFailed": "无法更新录制保护设置",
-		"openProjectsFolderFailed": "无法打开项目文件夹"
+		"openProjectsFolderFailed": "无法打开项目文件夹",
+		"resetSettings": "重置全部设置",
+		"resetSettingsDescription": "将软件设置恢复为默认值。项目、录制内容和媒体文件会保留。",
+		"resetSettingsConfirm": "确定要将软件的所有设置恢复为默认值吗？项目和录制内容不会被删除。",
+		"resetSettingsFailed": "无法重置设置"
 	},
 	"about": {
 		"title": "关于 Recordio",
@@ -390,6 +433,7 @@
 		"license": "原项目采用 GNU AGPLv3 许可证。版权所有 © 2026 webadderall。本版本保留适用的版权与许可声明。",
 		"maintainer": "Recordio 由周肥开发维护。",
 		"starInvitation": "如果这个软件对你有帮助，请给我的第一个 GitHub 项目点个 Star 吧！🙂",
+		"cloudDownload": "网盘下载",
 		"recordioRepository": "Recordio 项目仓库",
 		"repository": "原项目仓库",
 		"licenseLink": "原项目许可证"

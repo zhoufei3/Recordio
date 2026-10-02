@@ -1,4 +1,5 @@
 {
+	"multiSelectHint": "Selected {{count}} items. Changes apply to all selected items.",
 	"updates": {
 		"title": "Updates",
 		"experimental": "Experimental updates",
@@ -12,7 +13,20 @@
 		"modeAuto": "Auto",
 		"modeManual": "Manual",
 		"modeManualDescription": "Set a fixed focus point for this zoom",
-		"modeAutoDescription": "Camera recenters when the cursor nears the edge of the zoomed view"
+		"modeAutoDescription": "Camera recenters when the cursor nears the edge of the zoomed view",
+		"sound": "Zoom sound",
+		"defaultSoundsTitle": "Global zoom sounds",
+		"defaultSoundsDescription": "Changes apply to all zoom blocks. Individual block settings can still be changed and are saved with the project.",
+		"soundIn": "Zoom in",
+		"soundPan": "Camera movement",
+		"soundOut": "Zoom out",
+		"soundNone": "None",
+		"applySoundToAll": "Apply to all zooms",
+		"sounds": {
+			"zoom-1": "Page flip", "zoom-2": "Transition", "zoom-3": "Push", "zoom-4": "Soft swoosh 1",
+			"zoom-5": "Soft swoosh 2", "zoom-6": "Soft whoosh", "zoom-7": "Swoosh sequence", "zoom-8": "Fast swish",
+			"zoom-9": "Whoosh 1", "zoom-10": "Whoosh 2", "zoom-11": "Whoosh 3"
+		}
 	},
 	"trim": {
 		"deleteRegion": "Delete Trim Region"
@@ -110,6 +124,14 @@
 			"elastic-vivid": {
 				"label": "Lively Spring",
 				"description": "A stronger bounce for energetic demonstrations."
+			},
+			"elastic-bold": {
+				"label": "Strong Spring",
+				"description": "Pronounced camera and cursor recoil with smooth zoom transitions."
+			},
+			"elastic-ripple": {
+				"label": "Ripple Spring",
+				"description": "A stronger spring rebound paired with an expanding click ripple."
 			}
 		},
 		"zoomInDuration": "Zoom In Duration",
@@ -128,6 +150,13 @@
 			"linear": "Linear"
 		},
 		"cursorSize": "Cursor Size",
+		"cursorTrail": {
+			"title": "Cursor Trail",
+			"size": "Trail Size",
+			"length": "Trail Length",
+			"duration": "Duration",
+			"color": "Trail Color"
+		},
 		"cursorSmoothing": "Cursor Smoothing",
 		"cursorSpringStiffness": "Cursor Spring Stiffness",
 		"cursorSpringDamping": "Cursor Spring Damping",
@@ -166,6 +195,7 @@
 			"left": "Left-click Sound",
 			"right": "Right-click Sound",
 			"none": "Off",
+			"restoreDeleted": "Restore deleted click sounds",
 			"sound1": "Crisp",
 			"sound2": "Light",
 			"sound3": "Soft",
@@ -233,6 +263,7 @@
 		"cursorSpringMassMultiplier": "Spring mass"
 	},
 	"sections": {
+		"cursorSound": "Sound",
 		"scene": "Scene",
 		"captions": "Captions",
 		"caption": "Caption",
@@ -356,8 +387,16 @@
 		"starOnGithub": "Star on GitHub"
 	},
 	"audio": {
+		"importCustomSound": "Import custom sound",
+		"customSound": "Custom sound",
+		"customSoundImportFailed": "Could not import sound",
+		"customSoundDeleteFailed": "Could not delete sound",
+		"removeCustomSound": "Delete custom sound",
+		"deleteEffectSound": "Delete Sound Effect",
 		"title": "Audio",
 		"volumeTitle": "Audio",
+		"clickEffectTitle": "Mouse click sound",
+		"zoomEffectTitle": "Zoom sound",
 		"volume": "Volume",
 		"normalize": "Normalize",
 		"sourceTracksTitle": "Clip Source Audio",
@@ -382,7 +421,11 @@
 		"projectsRefreshHint": "Named projects save automatically. Previews refresh when you return to Projects.",
 		"changeRecordingsFolderFailed": "Could not change recordings folder",
 		"updateCaptureProtectionFailed": "Could not update capture protection",
-		"openProjectsFolderFailed": "Could not open projects folder"
+		"openProjectsFolderFailed": "Could not open projects folder",
+		"resetSettings": "Reset all settings",
+		"resetSettingsDescription": "Restore software settings to their defaults. Projects, recordings, and media files will be kept.",
+		"resetSettingsConfirm": "Reset all software settings to defaults? Your projects and recordings will not be deleted.",
+		"resetSettingsFailed": "Could not reset settings"
 	},
 	"about": {
 		"title": "About Recordio",
@@ -390,6 +433,7 @@
 		"license": "The original project is licensed under GNU AGPLv3. Copyright © 2026 webadderall. This version retains the applicable copyright and license notices.",
 		"maintainer": "Recordio is developed and maintained by Zhou Fei.",
 		"starInvitation": "If Recordio helps you, please give my first GitHub project a Star! 🙂",
+		"cloudDownload": "Cloud download",
 		"recordioRepository": "Recordio repository",
 		"repository": "Original repository",
 		"licenseLink": "Original license"

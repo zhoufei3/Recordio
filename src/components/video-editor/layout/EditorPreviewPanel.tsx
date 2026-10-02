@@ -1,6 +1,7 @@
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { FadRedoIcon, FadUndoIcon } from "@/components/ui/history-icons";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -62,6 +63,10 @@ type Props = {
 	projection: ReturnType<typeof useTimelineProjection>;
 	playback: ReturnType<typeof useEditorPlaybackControls>;
 	zoomCommands: ReturnType<typeof useZoomRegionCommands>;
+	canUndo: boolean;
+	canRedo: boolean;
+	handleUndo: () => void;
+	handleRedo: () => void;
 	annotationCommands: ReturnType<typeof useAnnotationRegionCommands>;
 	effectiveCursorTelemetry: ReturnType<typeof useTimelineState>["cursorTelemetry"];
 	effectiveShowCursor: boolean;
@@ -253,6 +258,7 @@ export function EditorPreviewPanel(props: Props) {
 									aspectRatio={aspectRatio}
 									playbackRef={videoPlaybackRef}
 									currentTime={currentTime}
+									timelineTime={projection.timelinePlayheadTime}
 									isPlaying={isPlaying}
 									previewVolume={previewVolume}
 									suspendRendering={suspendRendering}
@@ -367,6 +373,29 @@ export function EditorPreviewPanel(props: Props) {
 						aria-label={t("editor.toolbar.clearAllZooms", "Clear all zooms")}
 					>
 						<Trash className="h-4 w-4" />
+					</Button>
+					<div className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
+					<Button
+						onClick={props.handleUndo}
+						variant="ghost"
+						size="icon"
+						className="h-9 w-9"
+						disabled={!props.canUndo}
+						title={t("common.actions.undo", "Undo")}
+						aria-label={t("common.actions.undo", "Undo")}
+					>
+						<span className="size-4"><FadUndoIcon /></span>
+					</Button>
+					<Button
+						onClick={props.handleRedo}
+						variant="ghost"
+						size="icon"
+						className="h-9 w-9"
+						disabled={!props.canRedo}
+						title={t("common.actions.redo", "Redo")}
+						aria-label={t("common.actions.redo", "Redo")}
+					>
+						<span className="size-4"><FadRedoIcon /></span>
 					</Button>
 				</div>
 

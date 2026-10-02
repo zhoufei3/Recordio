@@ -1,4 +1,5 @@
 import { DEFAULT_ZOOM_IN_DURATION_MS, DEFAULT_ZOOM_OUT_DURATION_MS } from "./types";
+import type { CursorClickEffectStyle } from "./types";
 
 export type CursorMotionPresetId =
 	| "focused"
@@ -8,7 +9,9 @@ export type CursorMotionPresetId =
 	| "smooth"
 	| "immersive"
 	| "elastic-soft"
-	| "elastic-vivid";
+	| "elastic-vivid"
+	| "elastic-bold"
+	| "elastic-ripple";
 
 export interface CursorMotionPreset {
 	id: CursorMotionPresetId;
@@ -26,6 +29,7 @@ export interface CursorMotionPreset {
 	cameraSpringMassMultiplier: number;
 	cursorClickBounce: number;
 	cursorClickBounceDuration: number;
+	cursorClickEffect?: CursorClickEffectStyle;
 }
 
 export interface CursorMotionPresetSelectionInput {
@@ -41,6 +45,7 @@ export interface CursorMotionPresetSelectionInput {
 	cameraSpringMassMultiplier?: number;
 	cursorClickBounce: number;
 	cursorClickBounceDuration: number;
+	cursorClickEffect?: CursorClickEffectStyle;
 }
 
 const SHARED_CURSOR_PRESET_VALUES = {
@@ -155,6 +160,39 @@ export const CURSOR_MOTION_PRESETS: Record<CursorMotionPresetId, CursorMotionPre
 		cursorClickBounce: 3,
 		cursorClickBounceDuration: 430,
 	},
+	"elastic-bold": {
+		id: "elastic-bold",
+		label: "Strong Spring",
+		zoomSmoothness: 0.5,
+		zoomInDurationMs: 780,
+		zoomOutDurationMs: 700,
+		...SHARED_CURSOR_PRESET_VALUES,
+		cursorSpringStiffnessMultiplier: 1.3,
+		cursorSpringDampingMultiplier: 0.53,
+		cursorSpringMassMultiplier: 1.4,
+		cameraSpringStiffnessMultiplier: 1.15,
+		cameraSpringDampingMultiplier: 0.56,
+		cameraSpringMassMultiplier: 1.35,
+		cursorClickBounce: 4.2,
+		cursorClickBounceDuration: 520,
+	},
+	"elastic-ripple": {
+		id: "elastic-ripple",
+		label: "Ripple Spring",
+		zoomSmoothness: 0.5,
+		zoomInDurationMs: 880,
+		zoomOutDurationMs: 780,
+		...SHARED_CURSOR_PRESET_VALUES,
+		cursorSpringStiffnessMultiplier: 1.35,
+		cursorSpringDampingMultiplier: 0.44,
+		cursorSpringMassMultiplier: 1.5,
+		cameraSpringStiffnessMultiplier: 1.25,
+		cameraSpringDampingMultiplier: 0.4,
+		cameraSpringMassMultiplier: 1.45,
+		cursorClickBounce: 4.8,
+		cursorClickBounceDuration: 620,
+		cursorClickEffect: "ripple",
+	},
 };
 
 export function getMatchingCursorMotionPresetId(
@@ -177,7 +215,8 @@ export function getMatchingCursorMotionPresetId(
 			(values.cameraSpringMassMultiplier === undefined ||
 				preset.cameraSpringMassMultiplier === values.cameraSpringMassMultiplier) &&
 			preset.cursorClickBounce === values.cursorClickBounce &&
-			preset.cursorClickBounceDuration === values.cursorClickBounceDuration
+			preset.cursorClickBounceDuration === values.cursorClickBounceDuration &&
+			(preset.cursorClickEffect === undefined || preset.cursorClickEffect === values.cursorClickEffect)
 		) {
 			return presetId;
 		}

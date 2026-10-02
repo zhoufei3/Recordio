@@ -1,4 +1,5 @@
 import { createRecordingEditorNavigation } from "../../recordingEditorNavigation";
+import { stat } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { app, BrowserWindow, desktopCapturer, ipcMain, systemPreferences } from "electron";
@@ -126,6 +127,30 @@ export function registerSourceHandlers({
 	getSourceSelectorWindow: () => BrowserWindow | null;
 }) {
 	const recordingNavigation = createRecordingEditorNavigation(createEditorWindow);
+	let pendingRecordingEditorLaunch: {
+		videoPath: string;
+		webcamPath?: string | null;
+		timeOffsetMs?: number;
+		createdAt: number;
+	} | null = null;
+	ipcMain.handle("consume-recording-editor-launch", async () => {
+		const launch = pendingRecordingEditorLaunch;
+		pendingRecordingEditorLaunch = null;
+		if (!launch || Date.now() - launch.createdAt > 30_000) return null;
+		try {
+			if (!(await stat(launch.videoPath)).isFile()) return null;
+			if (launch.webcamPath && !(await stat(launch.webcamPath)).isFile()) {
+				launch.webcamPath = null;
+			}
+			return {
+				videoPath: launch.videoPath,
+				webcamPath: launch.webcamPath ?? null,
+				timeOffsetMs: launch.timeOffsetMs ?? 0,
+			};
+		} catch {
+			return null;
+		}
+	});
 	ipcMain.handle("get-sources", async (_, opts) => {
 		const cacheKey = JSON.stringify({
 			types: opts?.types,
@@ -612,11 +637,22 @@ body{background:transparent;overflow:hidden;width:100vw;height:100vh}
 		}
 	});
 	ipcMain.handle("show-project-dashboard", () => {
+		pendingRecordingEditorLaunch = null;
 		setHudRecordingPreparationActive(false);
 		recordingNavigation.open(false);
 	});
-	ipcMain.handle("switch-to-editor", () => {
+	ipcMain.handle("switch-to-editor", (_, recordingLaunch?: { videoPath?: unknown; webcamPath?: unknown; timeOffsetMs?: unknown } | boolean) => {
 		setHudRecordingPreparationActive(false);
+		pendingRecordingEditorLaunch = null;
+		if (recordingLaunch && typeof recordingLaunch === "object"
+			&& typeof recordingLaunch.videoPath === "string" && recordingLaunch.videoPath.trim()) {
+			pendingRecordingEditorLaunch = {
+				videoPath: recordingLaunch.videoPath,
+				webcamPath: typeof recordingLaunch.webcamPath === "string" ? recordingLaunch.webcamPath : null,
+				timeOffsetMs: typeof recordingLaunch.timeOffsetMs === "number" ? recordingLaunch.timeOffsetMs : 0,
+				createdAt: Date.now(),
+			};
+		}
 		console.log("[switch-to-editor] Opening editor window");
 		const sourceSelectorWin = getSourceSelectorWindow();
 		if (sourceSelectorWin && !sourceSelectorWin.isDestroyed()) {

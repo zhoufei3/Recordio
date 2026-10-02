@@ -4,11 +4,12 @@ type Result = { success: boolean; cancelled?: boolean; error?: string };
 /** Every countdown exit settles the IPC request, including cancellation during window load. */
 export function createCountdownController(
 	createWindow: () => BrowserWindow,
-	onRemaining: (seconds: number | null) => void,
+	onRemaining: (seconds: number | null, mode?: "editor" | "standard") => void,
 ) {
 	let finishActive: ((result: Result) => void) | null = null;
+	let activeMode: "editor" | "standard" | null = null;
 	return {
-		start(seconds: number): Promise<Result> {
+		start(seconds: number, mode?: "editor" | "standard"): Promise<Result> {
 			if (finishActive)
 				return Promise.resolve({ success: false, error: "Countdown already in progress" });
 			if (!Number.isFinite(seconds) || seconds < 0)
@@ -24,6 +25,7 @@ export function createCountdownController(
 					settled = true;
 					if (timer) clearInterval(timer);
 					finishActive = null;
+					activeMode = null;
 					onRemaining(null);
 					if (win) {
 						win.removeListener("closed", cancel);
@@ -42,8 +44,10 @@ export function createCountdownController(
 						cancel();
 						return;
 					}
-					onRemaining(remaining);
-					win.webContents.send("countdown-tick", remaining);
+					if (mode) onRemaining(remaining, mode);
+					else onRemaining(remaining);
+					if (mode) win.webContents.send("countdown-tick", remaining, mode);
+					else win.webContents.send("countdown-tick", remaining);
 				};
 				const begin = () => {
 					if (settled || started) return;
@@ -61,7 +65,9 @@ export function createCountdownController(
 					}, 1000);
 				};
 				finishActive = finish;
-				onRemaining(remaining);
+				activeMode = mode ?? null;
+				if (mode) onRemaining(remaining, mode);
+				else onRemaining(remaining);
 				try {
 					win = createWindow();
 					win.once("closed", cancel);
@@ -74,6 +80,9 @@ export function createCountdownController(
 					finish({ success: false, error: String(error) });
 				}
 			});
+		},
+		getActiveMode() {
+			return activeMode;
 		},
 		cancel() {
 			finishActive?.({ success: false, cancelled: true });

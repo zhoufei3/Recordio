@@ -530,9 +530,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	trashProjectWithVideo: (projectPath: string, confirmedVideoPath: string) =>
 		ipcRenderer.invoke("trash-project-with-video", projectPath, confirmedVideoPath),
 	showProjectDashboard: () => ipcRenderer.invoke("show-project-dashboard"),
-	switchToEditor: () => {
-		return ipcRenderer.invoke("switch-to-editor");
+	switchToEditor: (recordingLaunch?: { videoPath: string; webcamPath?: string | null; timeOffsetMs?: number }) => {
+		return ipcRenderer.invoke("switch-to-editor", recordingLaunch);
 	},
+	consumeRecordingEditorLaunch: () => ipcRenderer.invoke("consume-recording-editor-launch"),
 	openSourceSelector: () => {
 		return ipcRenderer.invoke("open-source-selector");
 	},
@@ -591,8 +592,19 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	stopFfmpegRecording: () => {
 		return ipcRenderer.invoke("stop-ffmpeg-recording");
 	},
-	storeRecordedVideo: (videoData: ArrayBuffer, fileName: string) => {
-		return ipcRenderer.invoke("store-recorded-video", videoData, fileName);
+	storeRecordedVideo: (
+		videoData: ArrayBuffer,
+		fileName: string,
+		withEditorMetadata?: boolean,
+		transcodeToMp4?: boolean,
+	) => {
+		return ipcRenderer.invoke(
+			"store-recorded-video",
+			videoData,
+			fileName,
+			withEditorMetadata,
+			transcodeToMp4,
+		);
 	},
 	storeMicrophoneSidecar: (
 		audioData: ArrayBuffer,
@@ -626,8 +638,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	getRecordedVideoPath: () => {
 		return ipcRenderer.invoke("get-recorded-video-path");
 	},
-	setRecordingState: (recording: boolean) => {
-		return ipcRenderer.invoke("set-recording-state", recording);
+	setRecordingState: (recording: boolean, captureCursorTelemetry?: boolean) => {
+		return ipcRenderer.invoke("set-recording-state", recording, captureCursorTelemetry);
 	},
 	setCursorScale: (scale: number) => {
 		return ipcRenderer.invoke("set-cursor-scale", scale);
@@ -731,6 +743,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	openAudioFilePicker: () => {
 		return ipcRenderer.invoke("open-audio-file-picker");
 	},
+	importEditorSound: () => ipcRenderer.invoke("import-editor-sound"),
+	deleteEditorSound: (filePath: string) => ipcRenderer.invoke("delete-editor-sound", filePath),
 	openWhisperExecutablePicker: () => {
 		return ipcRenderer.invoke("open-whisper-executable-picker");
 	},
@@ -1068,6 +1082,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		};
 		return result?.success === true;
 	},
+	resetAppSettings: () => ipcRenderer.invoke("reset-app-settings"),
 	setHasUnsavedChanges: (hasChanges: boolean) => {
 		ipcRenderer.send("set-has-unsaved-changes", hasChanges);
 	},
@@ -1103,11 +1118,16 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	getCountdownDelay: () => ipcRenderer.invoke("get-countdown-delay"),
 	setCountdownDelay: (delay: number) => ipcRenderer.invoke("set-countdown-delay", delay),
 	finishRecordingStartup: () => ipcRenderer.invoke("finish-recording-startup"),
-	startCountdown: (seconds: number) => ipcRenderer.invoke("start-countdown", seconds),
+	startCountdown: (seconds: number, mode?: "editor" | "standard") =>
+		ipcRenderer.invoke("start-countdown", seconds, mode),
 	cancelCountdown: () => ipcRenderer.invoke("cancel-countdown"),
 	getActiveCountdown: () => ipcRenderer.invoke("get-active-countdown"),
-	onCountdownTick: (callback: (seconds: number) => void) => {
-		const listener = (_event: Electron.IpcRendererEvent, seconds: number) => callback(seconds);
+	onCountdownTick: (callback: (seconds: number, mode?: "editor" | "standard") => void) => {
+		const listener = (
+			_event: Electron.IpcRendererEvent,
+			seconds: number,
+			mode?: "editor" | "standard",
+		) => callback(seconds, mode);
 		ipcRenderer.on("countdown-tick", listener);
 		return () => ipcRenderer.removeListener("countdown-tick", listener);
 	},

@@ -1,5 +1,6 @@
+import { Button, Separator, Tooltip } from "@heroui/react";
 import {
-	House,
+	HomeAltIcon,
 	MicrophoneIcon,
 	MicrophoneSlashIcon,
 	MinusIcon,
@@ -8,12 +9,13 @@ import {
 	XIcon,
 } from "@/components/ui/icons";
 import { useScopedT } from "@/contexts/I18nContext";
-import { Button, Separator, Tooltip } from "@heroui/react";
 import styles from "./LaunchWindow.module.css";
+import type { RecordingMode } from "./recordingMode";
 
 interface RecordingControlsProps {
 	onHome: () => void;
 	paused: boolean;
+	recordingMode: RecordingMode;
 	microphoneEnabled: boolean;
 	elapsed: number;
 	onPauseResume: () => void;
@@ -25,6 +27,7 @@ interface RecordingControlsProps {
 export function RecordingControls({
 	onHome,
 	paused,
+	recordingMode,
 	microphoneEnabled,
 	elapsed,
 	onPauseResume,
@@ -44,7 +47,7 @@ export function RecordingControls({
 				aria-label={t("recording.home")}
 				onPress={onHome}
 			>
-				<House weight="fill" className="size-4" />
+				<HomeAltIcon className="size-4" />
 			</Button>
 			<div
 				className="flex items-center gap-3 px-2"
@@ -56,6 +59,13 @@ export function RecordingControls({
 				/>
 				<span className="min-w-14 text-sm font-medium tabular-nums text-foreground">
 					{formatTime(elapsed)}
+				</span>
+				<span className="text-[10px] text-muted-foreground">
+					{t(
+						recordingMode === "editor"
+							? "recording.modeEditor"
+							: "recording.modeStandard",
+					)}
 				</span>
 				{paused && (
 					<span className="text-xs text-muted-foreground">{t("recording.paused")}</span>

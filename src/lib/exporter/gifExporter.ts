@@ -81,6 +81,11 @@ interface GifExporterConfig {
 	zoomSmoothness?: number;
 	zoomClassicMode?: boolean;
 	cursorMotionBlur?: number;
+	cursorTrailEnabled?: boolean;
+	cursorTrailSize?: number;
+	cursorTrailLength?: number;
+	cursorTrailDurationMs?: number;
+	cursorTrailColor?: string;
 	cursorClickEffect?: CursorClickEffectStyle;
 	cursorClickEffectColor?: string;
 	cursorClickEffectScale?: number;
@@ -188,6 +193,11 @@ export function buildGifFrameRendererConfig(
 		zoomSmoothness: config.zoomSmoothness,
 		zoomClassicMode: config.zoomClassicMode,
 		cursorMotionBlur: config.cursorMotionBlur,
+		cursorTrailEnabled: config.cursorTrailEnabled,
+		cursorTrailSize: config.cursorTrailSize,
+		cursorTrailLength: config.cursorTrailLength,
+		cursorTrailDurationMs: config.cursorTrailDurationMs,
+		cursorTrailColor: config.cursorTrailColor,
 		cursorClickEffect: config.cursorClickEffect,
 		cursorClickEffectColor: config.cursorClickEffectColor,
 		cursorClickEffectScale: config.cursorClickEffectScale,

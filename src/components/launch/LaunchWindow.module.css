@@ -93,6 +93,13 @@
 	padding: 6px 10px 4px;
 }
 
+.recordingModeTitle {
+	padding: 8px 12px 6px;
+	color: var(--launch-text);
+	font-size: 14px;
+	font-weight: 700;
+}
+
 .finalizingState {
 	display: inline-flex;
 	align-items: center;

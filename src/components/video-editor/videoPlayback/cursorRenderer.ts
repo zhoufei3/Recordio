@@ -87,8 +87,12 @@ export interface CursorRenderConfig {
 	dotColor: number;
 	/** Cursor opacity (0–1) */
 	dotAlpha: number;
-	/** Unused, kept for interface compatibility */
+	/** Maximum number of cursor positions retained for the trail. */
 	trailLength: number;
+	trailEnabled: boolean;
+	trailSize: number;
+	trailDurationMs: number;
+	trailColor: string;
 	/** Smoothing factor for cursor interpolation (0–1, lower = smoother/slower) */
 	smoothingFactor: number;
 	/** Optional multipliers applied on top of the derived cursor spring config. */
@@ -140,6 +144,10 @@ export const DEFAULT_CURSOR_CONFIG: CursorRenderConfig = {
 	dotColor: 0xffffff,
 	dotAlpha: 0.95,
 	trailLength: 0,
+	trailEnabled: false,
+	trailSize: 0.65,
+	trailDurationMs: 360,
+	trailColor: "#42C97A",
 	smoothingFactor: 0.18,
 	springTuning: {
 		stiffnessMultiplier: 1,
@@ -1059,7 +1067,7 @@ function getCursorVisualState(
 export class SmoothedCursorState {
 	public x = 0.5;
 	public y = 0.5;
-	public trail: Array<{ x: number; y: number }> = [];
+	public trail: Array<{ x: number; y: number; timeMs: number }> = [];
 	private smoothingFactor: number;
 	private springTuning: CursorSpringTuning;
 	private trailLength: number;
@@ -1093,11 +1101,21 @@ export class SmoothedCursorState {
 		}
 
 		if (this.smoothingFactor <= 0 || (this.lastTimeMs !== null && timeMs < this.lastTimeMs)) {
-			this.snapTo(targetX, targetY, timeMs);
+			if (this.smoothingFactor <= 0 && this.lastTimeMs !== null && timeMs >= this.lastTimeMs) {
+				this.trail.unshift({ x: this.x, y: this.y, timeMs: this.lastTimeMs });
+				this.setTrailLength(this.trailLength);
+				this.x = targetX;
+				this.y = targetY;
+				this.lastTimeMs = timeMs;
+				this.xSpring.value = targetX;
+				this.ySpring.value = targetY;
+			} else {
+				this.snapTo(targetX, targetY, timeMs);
+			}
 			return;
 		}
 
-		this.trail.unshift({ x: this.x, y: this.y });
+		this.trail.unshift({ x: this.x, y: this.y, timeMs: this.lastTimeMs ?? timeMs });
 		if (this.trail.length > this.trailLength) {
 			this.trail.length = this.trailLength;
 		}
@@ -1133,6 +1151,11 @@ export class SmoothedCursorState {
 		this.trail = [];
 	}
 
+	setTrailLength(length: number): void {
+		this.trailLength = length;
+		if (this.trail.length > length) this.trail.length = length;
+	}
+
 	reset(): void {
 		this.initialized = false;
 		this.lastTimeMs = null;
@@ -1144,7 +1167,9 @@ export class SmoothedCursorState {
 
 export class PixiCursorOverlay {
 	public readonly container: Container;
+	private cursorSpriteContainer: Container;
 	private clickRingGraphics: Graphics;
+	private trailGraphics: Graphics;
 	private customCursorShadowSprite: Sprite;
 	private customCursorShadowFilter: BlurFilter;
 	private customCursorSprite: Sprite;
@@ -1173,8 +1198,11 @@ export class PixiCursorOverlay {
 
 		this.container = new Container();
 		this.container.label = "cursor-overlay";
+		this.cursorSpriteContainer = new Container();
+		this.cursorSpriteContainer.label = "cursor-sprite-layer";
 
 		this.clickRingGraphics = new Graphics();
+		this.trailGraphics = new Graphics();
 		const initialCustomAsset = getCursorStyleAsset("figma");
 		this.customCursorShadowSprite = new Sprite(initialCustomAsset.texture);
 		this.customCursorShadowSprite.anchor.set(
@@ -1224,14 +1252,15 @@ export class PixiCursorOverlay {
 		this.cursorMotionBlurFilter = new MotionBlurFilter([0, 0], 5, 0);
 		this.container.filters = null;
 
-		this.container.addChild(
-			this.clickRingGraphics,
+		this.cursorSpriteContainer.addChild(
 			this.customCursorShadowSprite,
 			...Object.values(this.cursorShadowSprites),
 			this.customCursorSprite,
 			...Object.values(this.cursorSprites),
 		);
+		this.container.addChild(this.clickRingGraphics, this.trailGraphics, this.cursorSpriteContainer);
 		this.setMotionBlur(this.config.motionBlur);
+		this.setTrailOptions({});
 		this.setStyle(this.config.style);
 	}
 
@@ -1254,12 +1283,22 @@ export class PixiCursorOverlay {
 
 	setMotionBlur(motionBlur: number) {
 		this.config.motionBlur = Math.max(0, motionBlur);
-		this.container.filters = this.config.motionBlur > 0 ? [this.cursorMotionBlurFilter] : null;
+		this.cursorSpriteContainer.filters =
+			this.config.motionBlur > 0 ? [this.cursorMotionBlurFilter] : null;
 		if (this.config.motionBlur <= 0) {
 			this.cursorMotionBlurFilter.velocity = { x: 0, y: 0 };
 			this.cursorMotionBlurFilter.kernelSize = 5;
 			this.cursorMotionBlurFilter.offset = 0;
 		}
+	}
+
+	setTrailOptions(
+		options: Partial<
+			Pick<CursorRenderConfig, "trailEnabled" | "trailSize" | "trailLength" | "trailDurationMs" | "trailColor">
+		>,
+	): void {
+		Object.assign(this.config, options);
+		this.state.setTrailLength(this.config.trailLength);
 	}
 
 	setFilterResolution(resolution: number) {
@@ -1295,7 +1334,7 @@ export class PixiCursorOverlay {
 	}
 
 	setClickBounceDuration(clickBounceDuration: number) {
-		this.config.clickBounceDuration = clamp(clickBounceDuration, 60, 500);
+		this.config.clickBounceDuration = clamp(clickBounceDuration, 60, 1000);
 	}
 
 	setSway(sway: number) {
@@ -1357,6 +1396,7 @@ export class PixiCursorOverlay {
 			this.container.visible = false;
 			this.cursorVisible = false;
 			this.clickRingGraphics.clear();
+			this.trailGraphics.clear();
 			this.lastRenderedPoint = null;
 			this.lastRenderedTimeMs = null;
 			this.swayRotation = 0;
@@ -1378,6 +1418,7 @@ export class PixiCursorOverlay {
 			this.container.visible = false;
 			this.cursorVisible = false;
 			this.clickRingGraphics.clear();
+			this.trailGraphics.clear();
 			return;
 		}
 
@@ -1418,6 +1459,7 @@ export class PixiCursorOverlay {
 			this.container.visible = false;
 			this.cursorVisible = false;
 			this.clickRingGraphics.clear();
+			this.trailGraphics.clear();
 			this.customCursorShadowSprite.visible = false;
 			this.customCursorSprite.visible = false;
 			for (const shadowSprite of Object.values(this.cursorShadowSprites)) {
@@ -1476,6 +1518,7 @@ export class PixiCursorOverlay {
 			1 - Math.sin(clickBounceProgress * Math.PI) * (0.08 * this.config.clickBounce),
 		);
 		const scaledH = h * getCursorStyleSizeMultiplier(this.config.style);
+		this.drawCursorTrail(samples, viewport, scaledH, timeMs, px, py);
 		const swayRotation = this.updateCursorSway(px, py, timeMs, shouldFreezeCursorMotion);
 
 		drawClickEffectGraphics(
@@ -1653,8 +1696,103 @@ export class PixiCursorOverlay {
 		this.cursorMotionBlurFilter.offset = 0;
 	}
 
+	private drawCursorTrail(
+		samples: CursorTelemetryPoint[],
+		viewport: CursorViewportRect,
+		cursorHeight: number,
+		timeMs: number,
+		headX: number,
+		headY: number,
+	): void {
+		const graphics = this.trailGraphics;
+		graphics.clear();
+		if (
+			!this.config.trailEnabled ||
+			!this.cursorVisible ||
+			this.config.trailLength < 2 ||
+			samples.length === 0
+		) return;
+		const rawHex = this.config.trailColor.replace("#", "");
+		const hex = rawHex.length === 3 ? rawHex.split("").map((value) => value + value).join("") : rawHex;
+		const color = Number.parseInt(hex, 16);
+		const oldestSampleTime = samples[0].timeMs;
+		const points: Array<{ x: number; y: number; fade: number }> = [];
+		for (let index = this.config.trailLength; index >= 1; index -= 1) {
+			const progress = index / (this.config.trailLength + 1);
+			const age = this.config.trailDurationMs * progress;
+			const sampleTime = timeMs - age;
+			if (sampleTime < oldestSampleTime) continue;
+			const historicalPosition = interpolateCursorPosition(samples, sampleTime);
+			if (!historicalPosition) continue;
+			const projectedPosition = projectCursorPositionToViewport(
+				historicalPosition,
+				viewport.sourceCrop,
+			);
+			if (!projectedPosition.visible) continue;
+			points.push({
+				x: viewport.x + projectedPosition.cx * viewport.width,
+				y: viewport.y + projectedPosition.cy * viewport.height,
+				fade: 1 - progress,
+			});
+		}
+		points.push({ x: headX, y: headY, fade: 1 });
+		if (points.length < 2) return;
+
+		const leftEdge: Array<{ x: number; y: number }> = [];
+		const rightEdge: Array<{ x: number; y: number }> = [];
+		for (let index = 0; index < points.length; index += 1) {
+			const previous = points[Math.max(0, index - 1)];
+			const next = points[Math.min(points.length - 1, index + 1)];
+			let tangentX = next.x - previous.x;
+			let tangentY = next.y - previous.y;
+			let tangentLength = Math.hypot(tangentX, tangentY);
+			if (tangentLength < 0.001) continue;
+			tangentX /= tangentLength;
+			tangentY /= tangentLength;
+			const halfWidth =
+				cursorHeight * 0.12 * this.config.trailSize * points[index].fade;
+			const offsetX = -tangentY * halfWidth;
+			const offsetY = tangentX * halfWidth;
+			leftEdge.push({
+				x: points[index].x + offsetX,
+				y: points[index].y + offsetY,
+			});
+			rightEdge.push({
+				x: points[index].x - offsetX,
+				y: points[index].y - offsetY,
+			});
+		}
+		if (leftEdge.length < 2 || rightEdge.length < 2) return;
+
+		graphics.moveTo(leftEdge[0].x, leftEdge[0].y);
+		for (let index = 1; index < leftEdge.length - 1; index += 1) {
+			const next = leftEdge[index + 1];
+			graphics.quadraticCurveTo(
+				leftEdge[index].x,
+				leftEdge[index].y,
+				(leftEdge[index].x + next.x) / 2,
+				(leftEdge[index].y + next.y) / 2,
+			);
+		}
+		graphics.lineTo(leftEdge[leftEdge.length - 1].x, leftEdge[leftEdge.length - 1].y);
+		graphics.lineTo(rightEdge[rightEdge.length - 1].x, rightEdge[rightEdge.length - 1].y);
+		for (let index = rightEdge.length - 2; index > 0; index -= 1) {
+			const previous = rightEdge[index - 1];
+			graphics.quadraticCurveTo(
+				rightEdge[index].x,
+				rightEdge[index].y,
+				(rightEdge[index].x + previous.x) / 2,
+				(rightEdge[index].y + previous.y) / 2,
+			);
+		}
+		graphics.lineTo(rightEdge[0].x, rightEdge[0].y);
+		graphics.closePath();
+		graphics.fill({ color, alpha: 0.65 });
+	}
+
 	destroy(): void {
 		this.clickRingGraphics.destroy();
+		this.trailGraphics.destroy();
 		this.customCursorShadowFilter.destroy();
 		for (const shadowFilter of Object.values(this.cursorShadowFilters)) {
 			shadowFilter.destroy();

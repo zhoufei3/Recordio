@@ -396,8 +396,8 @@ export function verifyMacOSDistribution(argv = process.argv.slice(2)) {
 
 	try {
 		const artifactSuffix = options.arch === "arm64" ? "arm64" : "x64";
-		const dmgPath = path.join(options.releaseDir, `${productName}-${artifactSuffix}.dmg`);
-		const zipPath = path.join(options.releaseDir, `${productName}-${artifactSuffix}.zip`);
+		const dmgPath = path.join(options.releaseDir, `${productName}-${packageJson.version}-${artifactSuffix}.dmg`);
+		const zipPath = path.join(options.releaseDir, `${productName}-${packageJson.version}-${artifactSuffix}.zip`);
 
 		check("release artifacts exist", () => {
 			assertFile(dmgPath, "DMG artifact");

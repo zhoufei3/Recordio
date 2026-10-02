@@ -44,6 +44,9 @@ export function useVideoEditorPresets({
 			zoomMotionBlur: appearance.zoomMotionBlur,
 			zoomMotionBlurTuning: { ...appearance.zoomMotionBlurTuning },
 			connectZooms: appearance.connectZooms,
+			defaultZoomSoundId: appearance.defaultZoomSoundId,
+			defaultZoomPanSoundId: appearance.defaultZoomPanSoundId,
+			defaultZoomOutSoundId: appearance.defaultZoomOutSoundId,
 			zoomInDurationMs: appearance.zoomInDurationMs,
 			zoomInOverlapMs: appearance.zoomInOverlapMs,
 			zoomOutDurationMs: appearance.zoomOutDurationMs,
@@ -64,6 +67,11 @@ export function useVideoEditorPresets({
 			cameraSpringDampingMultiplier: appearance.cameraSpringDampingMultiplier,
 			cameraSpringMassMultiplier: appearance.cameraSpringMassMultiplier,
 			cursorMotionBlur: appearance.cursorMotionBlur,
+			cursorTrailEnabled: appearance.cursorTrailEnabled,
+			cursorTrailSize: appearance.cursorTrailSize,
+			cursorTrailLength: appearance.cursorTrailLength,
+			cursorTrailDurationMs: appearance.cursorTrailDurationMs,
+			cursorTrailColor: appearance.cursorTrailColor,
 			cursorClickEffect: appearance.cursorClickEffect,
 			cursorClickEffectColor: appearance.cursorClickEffectColor,
 			cursorClickEffectScale: appearance.cursorClickEffectScale,
@@ -115,6 +123,9 @@ export function useVideoEditorPresets({
 			appearance.setZoomMotionBlur(snapshot.zoomMotionBlur);
 			appearance.setZoomMotionBlurTuning({ ...snapshot.zoomMotionBlurTuning });
 			appearance.setConnectZooms(snapshot.connectZooms);
+			appearance.setDefaultZoomSoundId(snapshot.defaultZoomSoundId);
+			appearance.setDefaultZoomPanSoundId(snapshot.defaultZoomPanSoundId);
+			appearance.setDefaultZoomOutSoundId(snapshot.defaultZoomOutSoundId);
 			appearance.setZoomInDurationMs(snapshot.zoomInDurationMs);
 			appearance.setZoomInOverlapMs(snapshot.zoomInOverlapMs);
 			appearance.setZoomOutDurationMs(snapshot.zoomOutDurationMs);
@@ -135,6 +146,11 @@ export function useVideoEditorPresets({
 			appearance.setCameraSpringDampingMultiplier(snapshot.cameraSpringDampingMultiplier);
 			appearance.setCameraSpringMassMultiplier(snapshot.cameraSpringMassMultiplier);
 			appearance.setCursorMotionBlur(snapshot.cursorMotionBlur);
+			appearance.setCursorTrailEnabled(snapshot.cursorTrailEnabled);
+			appearance.setCursorTrailSize(snapshot.cursorTrailSize);
+			appearance.setCursorTrailLength(snapshot.cursorTrailLength);
+			appearance.setCursorTrailDurationMs(snapshot.cursorTrailDurationMs);
+			appearance.setCursorTrailColor(snapshot.cursorTrailColor);
 			appearance.setCursorClickEffect(snapshot.cursorClickEffect);
 			appearance.setCursorClickEffectColor(snapshot.cursorClickEffectColor);
 			appearance.setCursorClickEffectScale(snapshot.cursorClickEffectScale);

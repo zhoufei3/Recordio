@@ -14,6 +14,9 @@ export interface ZoomRegion {
 	depth: ZoomDepth;
 	focus: ZoomFocus;
 	mode?: ZoomMode;
+	soundId?: string;
+	panSoundId?: string;
+	outSoundId?: string;
 }
 
 export interface CursorTelemetryPoint {
@@ -80,6 +83,11 @@ export const DEFAULT_CURSOR_CLICK_EFFECT_COLOR = "#2563EB";
 export const DEFAULT_CURSOR_CLICK_EFFECT_SCALE = 1;
 export const DEFAULT_CURSOR_CLICK_EFFECT_OPACITY = 1;
 export const DEFAULT_CURSOR_CLICK_EFFECT_DURATION_MS = 600;
+export const DEFAULT_CURSOR_TRAIL_ENABLED = false;
+export const DEFAULT_CURSOR_TRAIL_SIZE = 0.65;
+export const DEFAULT_CURSOR_TRAIL_LENGTH = 12;
+export const DEFAULT_CURSOR_TRAIL_DURATION_MS = 360;
+export const DEFAULT_CURSOR_TRAIL_COLOR = "#42C97A";
 export const DEFAULT_RIGHT_CLICK_EFFECT: CursorClickEffectSettings = {
 	style: "none",
 	color: "#E94F54",
@@ -140,6 +148,7 @@ export function normalizeCursorClickEffectColor(
 export type EditorEffectSection =
 	| "scene"
 	| "cursor"
+	| "cursorSound"
 	| "captions"
 	| "caption"
 	| "webcam"
@@ -595,6 +604,8 @@ export interface AudioRegion {
 	volume: number;
 	normalize?: boolean;
 	trackIndex?: number;
+	effectKind?: "click" | "zoom";
+	label?: string;
 }
 
 export interface CaptionCue {

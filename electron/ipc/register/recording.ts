@@ -1,5 +1,6 @@
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { execFile, spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -13,6 +14,7 @@ import {
 	systemPreferences,
 } from "electron";
 import { getHudCaptureExcludedProcessIds } from "../../../src/lib/hudCaptureProtection";
+import { formatFilenameTimestamp } from "../../../src/lib/filenameTimestamp";
 import { showCursor } from "../../cursorHider";
 import { getHudOverlayCaptureProtectionEnabled, beginHudCaptureProtection } from "../../windows";
 import { ALLOW_RECORDLY_WINDOW_CAPTURE } from "../constants";
@@ -443,7 +445,8 @@ export function registerRecordingHandlers(
 					const exePath = getWindowsCaptureExePath();
 					const recordingsDir = await getRecordingsDir();
 					const timestamp = Date.now();
-					const outputPath = path.join(recordingsDir, `recording-${timestamp}.mp4`);
+					const recordingName = `Recording-${formatFilenameTimestamp(timestamp)}`;
+					const outputPath = path.join(recordingsDir, `${recordingName}.mp4`);
 					tempVideoPath = path.join(
 						app.getPath("temp"),
 						`recordly-native-${timestamp}.mp4`,
@@ -506,7 +509,7 @@ export function registerRecordingHandlers(
 					if (options?.capturesSystemAudio) {
 						systemAudioPath = path.join(
 							recordingsDir,
-							`recording-${timestamp}.system.wav`,
+							`${recordingName}.system.wav`,
 						);
 						tempSystemAudioPath = path.join(
 							app.getPath("temp"),
@@ -520,7 +523,7 @@ export function registerRecordingHandlers(
 					}
 
 					if (options?.capturesMicrophone && !browserMicFallbackRequested) {
-						microphonePath = path.join(recordingsDir, `recording-${timestamp}.mic.wav`);
+						microphonePath = path.join(recordingsDir, `${recordingName}.mic.wav`);
 						tempMicPath = path.join(
 							app.getPath("temp"),
 							`recordly-native-${timestamp}.mic.wav`,
@@ -719,14 +722,15 @@ export function registerRecordingHandlers(
 
 				const helperPath = await ensureNativeCaptureHelperBinary();
 				const timestamp = Date.now();
-				const outputPath = path.join(recordingsDir, `recording-${timestamp}.mp4`);
+				const recordingName = `Recording-${formatFilenameTimestamp(timestamp)}`;
+				const outputPath = path.join(recordingsDir, `${recordingName}.mp4`);
 				const capturesSystemAudio = Boolean(options?.capturesSystemAudio);
 				const capturesMicrophone = Boolean(options?.capturesMicrophone);
 				const systemAudioOutputPath = capturesSystemAudio
-					? path.join(recordingsDir, `recording-${timestamp}.system.m4a`)
+					? path.join(recordingsDir, `${recordingName}.system.m4a`)
 					: null;
 				const microphoneOutputPath = capturesMicrophone
-					? path.join(recordingsDir, `recording-${timestamp}.mic.m4a`)
+					? path.join(recordingsDir, `${recordingName}.mic.m4a`)
 					: null;
 				const config: Record<string, unknown> = {
 					fps: 60,
@@ -1573,7 +1577,10 @@ export function registerRecordingHandlers(
 		try {
 			const recordingsDir = await getRecordingsDir();
 			const ffmpegPath = getFfmpegBinaryPath();
-			const outputPath = path.join(recordingsDir, `recording-${Date.now()}.mp4`);
+			const outputPath = path.join(
+				recordingsDir,
+				`Recording-${formatFilenameTimestamp()}.mp4`,
+			);
 			const args = await buildFfmpegCaptureArgs(source, outputPath);
 
 			setFfmpegCaptureOutputBuffer("");
@@ -1796,21 +1803,100 @@ export function registerRecordingHandlers(
 		},
 	);
 
-	ipcMain.handle("store-recorded-video", async (_, videoData: ArrayBuffer, fileName: unknown) => {
-		try {
-			const recordingsDir = await getRecordingsDir();
-			const videoPath = resolveRecordedVideoStoragePath(recordingsDir, fileName);
-			await fs.writeFile(videoPath, Buffer.from(videoData));
-			return await finalizeStoredVideo(videoPath);
-		} catch (error) {
-			console.error("Failed to store video:", error);
-			return {
-				success: false,
-				message: "Failed to store video",
-				error: String(error),
-			};
-		}
-	});
+	ipcMain.handle(
+		"store-recorded-video",
+		async (
+			_,
+			videoData: ArrayBuffer,
+			fileName: unknown,
+			withEditorMetadata = true,
+			transcodeToMp4 = false,
+		) => {
+			let inputPath: string | null = null;
+			let outputPath: string | null = null;
+			try {
+				const recordingsDir = await getRecordingsDir();
+				const requestedVideoPath = resolveRecordedVideoStoragePath(recordingsDir, fileName);
+				outputPath = transcodeToMp4
+					? resolveRecordedVideoStoragePath(
+						recordingsDir,
+						`${path.basename(requestedVideoPath, path.extname(requestedVideoPath))}.mp4`,
+					)
+					: requestedVideoPath;
+				inputPath = transcodeToMp4
+					? path.join(app.getPath("temp"), `recordly-standard-${randomUUID()}.webm`)
+					: requestedVideoPath;
+				await fs.writeFile(inputPath, Buffer.from(videoData));
+				if (transcodeToMp4) {
+					const ffmpeg = spawn(
+						getFfmpegBinaryPath(),
+						[
+							"-hide_banner",
+							"-loglevel",
+							"error",
+							"-y",
+							"-i",
+							inputPath,
+							"-map",
+							"0:v:0",
+							"-map",
+							"0:a?",
+							"-c:v",
+							"libx264",
+							"-preset",
+							"medium",
+							"-crf",
+							"16",
+							"-pix_fmt",
+							"yuv420p",
+							"-c:a",
+							"aac",
+							"-b:a",
+							"320k",
+							"-movflags",
+							"+faststart",
+							outputPath,
+						],
+						{ stdio: ["ignore", "ignore", "pipe"], windowsHide: true },
+					);
+					let ffmpegError = "";
+					ffmpeg.stderr.on("data", (chunk: Buffer) => {
+						ffmpegError = `${ffmpegError}${chunk.toString()}`.slice(-8000);
+					});
+					await new Promise<void>((resolve, reject) => {
+						ffmpeg.once("error", reject);
+						ffmpeg.once("close", (code) => {
+							if (code === 0) resolve();
+							else reject(new Error(ffmpegError.trim() || `FFmpeg exited with code ${code}`));
+						});
+					});
+					await fs.rm(inputPath, { force: true });
+				} else {
+					await fs.writeFile(outputPath, Buffer.from(videoData));
+				}
+				if (!withEditorMetadata) {
+					const validation = await validateRecordedVideo(outputPath);
+					return {
+						success: true,
+						path: outputPath,
+						message: `Video stored successfully (${validation.fileSizeBytes} bytes)`,
+					};
+				}
+				return await finalizeStoredVideo(outputPath);
+			} catch (error) {
+				console.error("Failed to store video:", error);
+				if (transcodeToMp4) {
+					if (inputPath) await fs.rm(inputPath, { force: true }).catch(() => undefined);
+					if (outputPath) await fs.rm(outputPath, { force: true }).catch(() => undefined);
+				}
+				return {
+					success: false,
+					message: "Failed to store video",
+					error: String(error),
+				};
+			}
+		},
+	);
 
 	ipcMain.handle("get-recorded-video-path", async () => {
 		try {
@@ -1820,7 +1906,7 @@ export function registerRecordingHandlers(
 				entries
 					.filter(
 						(entry) =>
-							entry.isFile() && /^recording-\d+\.(webm|mov|mp4)$/i.test(entry.name),
+							entry.isFile() && /^(?:recording-\d+|Recording-\d{4}-\d{1,2}-\d{1,2}-\d{1,2}-\d{1,2}-\d{1,2})(?:-webcam)?\.(webm|mov|mp4)$/i.test(entry.name),
 					)
 					.map(async (entry) => {
 						const fullPath = path.join(recordingsDir, entry.name);
@@ -1859,49 +1945,59 @@ export function registerRecordingHandlers(
 		}
 	});
 
-	ipcMain.handle("set-recording-state", (_, recording: boolean) => {
-		if (recording) {
-			stopCursorCapture();
-			stopInteractionCapture();
-			startWindowBoundsCapture();
-			void startNativeCursorMonitor();
-			setIsCursorCaptureActive(true);
-			setActiveCursorSamples([]);
-			setPendingCursorSamples([]);
-			setCursorCaptureStartTimeMs(Date.now());
-			resetCursorCaptureClock();
-			setLinuxCursorScreenPoint(null);
-			setLastLeftClick(null);
-			sampleCursorPoint();
-			startCursorSampling();
-			void startInteractionCapture();
-		} else {
-			setIsCursorCaptureActive(false);
-			stopCursorCapture();
-			stopInteractionCapture();
-			stopWindowBoundsCapture();
-			stopNativeCursorMonitor();
-			showCursor();
-			setLinuxCursorScreenPoint(null);
-			resetCursorCaptureClock();
-			snapshotCursorTelemetryForPersistence();
-			setActiveCursorSamples([]);
-		}
-
-		const source = selectedSource || { name: "Screen" };
-		BrowserWindow.getAllWindows().forEach((window) => {
-			if (!window.isDestroyed()) {
-				window.webContents.send("recording-state-changed", {
-					recording,
-					sourceName: source.name,
-				});
+	ipcMain.handle(
+		"set-recording-state",
+		(_, recording: boolean, captureCursorTelemetry = true) => {
+			if (recording) {
+				stopCursorCapture();
+				stopInteractionCapture();
+				stopWindowBoundsCapture();
+				stopNativeCursorMonitor();
+				setIsCursorCaptureActive(false);
+				setActiveCursorSamples([]);
+				setPendingCursorSamples([]);
+				resetCursorCaptureClock();
+				setLinuxCursorScreenPoint(null);
+				setLastLeftClick(null);
+				if (captureCursorTelemetry) {
+					startWindowBoundsCapture();
+					void startNativeCursorMonitor();
+					setIsCursorCaptureActive(true);
+					setCursorCaptureStartTimeMs(Date.now());
+					sampleCursorPoint();
+					startCursorSampling();
+					void startInteractionCapture();
+				} else {
+					showCursor();
+				}
+			} else {
+				setIsCursorCaptureActive(false);
+				stopCursorCapture();
+				stopInteractionCapture();
+				stopWindowBoundsCapture();
+				stopNativeCursorMonitor();
+				showCursor();
+				setLinuxCursorScreenPoint(null);
+				resetCursorCaptureClock();
+				snapshotCursorTelemetryForPersistence();
+				setActiveCursorSamples([]);
 			}
-		});
 
-		if (onRecordingStateChange) {
-			onRecordingStateChange(recording, source.name);
-		}
-	});
+			const source = selectedSource || { name: "Screen" };
+			BrowserWindow.getAllWindows().forEach((window) => {
+				if (!window.isDestroyed()) {
+					window.webContents.send("recording-state-changed", {
+						recording,
+						sourceName: source.name,
+					});
+				}
+			});
+
+			if (onRecordingStateChange) {
+				onRecordingStateChange(recording, source.name);
+			}
+		},
+	);
 
 	ipcMain.handle("pause-cursor-capture", (_, pausedAtMs?: unknown) => {
 		pauseCursorCaptureAtBoundary(normalizeRendererTimestampMs(pausedAtMs));

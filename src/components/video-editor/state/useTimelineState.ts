@@ -14,6 +14,10 @@ import type {
 import { DEFAULT_AUTO_CAPTION_SETTINGS } from "../types";
 
 export function useTimelineState() {
+	const [selectedTrackItems, setSelectedTrackItems] = useState<{
+		kind: "zoom" | "clip" | "audio";
+		ids: string[];
+	} | null>(null);
 	const [zoomRegions, setZoomRegions] = useState<ZoomRegion[]>([]);
 	const [cursorTelemetry, setCursorTelemetry] = useState<CursorTelemetryPoint[]>([]);
 	const [cursorTelemetrySourcePath, setCursorTelemetrySourcePath] = useState<string | null>(null);
@@ -25,6 +29,9 @@ export function useTimelineState() {
 	const [annotationRegions, setAnnotationRegions] = useState<AnnotationRegion[]>([]);
 	const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
 	const [audioRegions, setAudioRegions] = useState<AudioRegion[]>([]);
+	const [effectAudioVolumes, setEffectAudioVolumes] = useState<Record<string, number>>({});
+	const [effectAudioStartOverrides, setEffectAudioStartOverrides] = useState<Record<string, number>>({});
+	const [disabledEffectAudioIds, setDisabledEffectAudioIds] = useState<string[]>([]);
 	const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
 	const [selectedCaptionId, setSelectedCaptionId] = useState<string | null>(null);
 	const [sourceAudioTrackSettingsByClip, setSourceAudioTrackSettingsByClip] = useState<
@@ -40,6 +47,8 @@ export function useTimelineState() {
 	);
 
 	return {
+		selectedTrackItems,
+		setSelectedTrackItems,
 		zoomRegions,
 		setZoomRegions,
 		cursorTelemetry,
@@ -62,6 +71,12 @@ export function useTimelineState() {
 		setSelectedAnnotationId,
 		audioRegions,
 		setAudioRegions,
+		effectAudioVolumes,
+		setEffectAudioVolumes,
+		effectAudioStartOverrides,
+		setEffectAudioStartOverrides,
+		disabledEffectAudioIds,
+		setDisabledEffectAudioIds,
 		selectedAudioId,
 		setSelectedAudioId,
 		selectedCaptionId,

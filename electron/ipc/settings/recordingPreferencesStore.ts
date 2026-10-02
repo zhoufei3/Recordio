@@ -41,5 +41,21 @@ export function createRecordingPreferencesStore(filePath: string) {
 			operationQueue = operation.catch(() => undefined);
 			await operation;
 		},
+		async reset(): Promise<void> {
+			const operation = operationQueue.then(async () => {
+				const recordingsDir = (await readFile()).recordingsDir;
+				await fs.writeFile(
+					filePath,
+					JSON.stringify(
+						typeof recordingsDir === "string" ? { recordingsDir } : {},
+						null,
+						2,
+					),
+					"utf-8",
+				);
+			});
+			operationQueue = operation.catch(() => undefined);
+			await operation;
+		},
 	};
 }
