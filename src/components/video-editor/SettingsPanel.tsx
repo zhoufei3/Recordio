@@ -1197,6 +1197,7 @@ export function SettingsPanel({
 	);
 	const [experimentalUpdatesEnabled, setExperimentalUpdatesEnabled] = useState(false);
 	const [savingExperimentalUpdates, setSavingExperimentalUpdates] = useState(false);
+	const [checkingForUpdates, setCheckingForUpdates] = useState(false);
 	const { openConfig: openShortcutsConfig } = useShortcuts();
 	const [internalActiveEffectSection] = useState<EditorEffectSection>("scene");
 	const activeEffectSection = activeEffectSectionProp ?? internalActiveEffectSection;
@@ -1252,6 +1253,23 @@ export function SettingsPanel({
 			);
 		} finally {
 			setSavingExperimentalUpdates(false);
+		}
+	};
+
+	const checkForAppUpdates = async () => {
+		setCheckingForUpdates(true);
+		try {
+			await window.electronAPI.checkForAppUpdates();
+			const status = await window.electronAPI.getUpdateStatusSummary();
+			if (status.status === "up-to-date") {
+				toast.success(tSettings("updates.upToDate", "当前已是最新版本"));
+			} else if (status.status === "error") {
+				toast.error(status.detail || tSettings("updates.checkFailed", "检查更新失败"));
+			}
+		} catch (error) {
+			toast.error(String(error));
+		} finally {
+			setCheckingForUpdates(false);
 		}
 	};
 
@@ -2548,6 +2566,25 @@ export function SettingsPanel({
 					{advanced && (
 						<section className="flex flex-col gap-4">
 							<SectionLabel>{tSettings("updates.title", "Updates")}</SectionLabel>
+							<SettingsRow
+								title={tSettings("updates.checkNowTitle", "Check for updates")}
+								description={tSettings(
+									"updates.checkNowDescription",
+									"Check now for a newer Recordio release.",
+								)}
+							>
+								<Button
+									variant="secondary"
+									size="sm"
+									disabled={checkingForUpdates}
+									onClick={() => void checkForAppUpdates()}
+								>
+									{tSettings(
+										checkingForUpdates ? "updates.checking" : "updates.checkNow",
+										checkingForUpdates ? "Checking…" : "Check now",
+									)}
+								</Button>
+							</SettingsRow>
 							<SettingsRow
 								title={tSettings("updates.experimental", "Experimental updates")}
 								description={tSettings(

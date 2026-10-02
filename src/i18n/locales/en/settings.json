@@ -2,6 +2,12 @@
 	"multiSelectHint": "Selected {{count}} items. Changes apply to all selected items.",
 	"updates": {
 		"title": "Updates",
+		"checkNowTitle": "Check for updates",
+		"checkNowDescription": "Check now for a newer Recordio release.",
+		"checkNow": "Check now",
+		"checking": "Checking…",
+		"upToDate": "You're up to date",
+		"checkFailed": "Could not check for updates",
 		"experimental": "Experimental updates",
 		"experimentalDescription": "You've opted into experimental updates so you have the choice to test the latest update of Recordio before it's widely available.",
 		"saveFailed": "Failed to change the update channel."

@@ -3,19 +3,19 @@ import { useScopedT } from "@/contexts/I18nContext";
 const sections = [
 	{
 		id: "recording",
-		title: "Record your screen",
+		title: "Recording modes and capture",
 		steps: [
-			"Select a display or window on the recording screen, then choose whether to capture system audio and a microphone.",
-			"Check the audio device and input level before you start. The countdown gives you time to prepare the screen.",
-			"Stop recording from the recording controls. Wait for the save operation to finish before closing the app, especially for long videos.",
-			"The recording opens in the editor; its video and supporting cursor/audio files are stored in the recordings folder.",
+			"Presentation recording is selected by default and remembers your last choice. Change modes from the floating bar; switching modes asks you to confirm, and the countdown identifies the mode for this recording.",
+			"Presentation recording keeps editable cursor and click data, then opens the editor. Standard recording captures the screen and audio as an HD MP4 without editable cursor data or a webcam overlay; it skips the editor and opens the recordings folder when finished.",
+			"Choose a display or window and enable system audio or a microphone as needed. Check the audio input before starting; use the countdown to prepare your screen.",
+			"Stop from the recording controls and wait for saving to finish, especially for long recordings. Presentation recordings and their cursor/audio sidecars are saved in the recordings folder.",
 		],
 	},
 	{
 		id: "projects",
 		title: "Projects and files",
 		steps: [
-			"Open a project from Home, or import an existing video or project file. Named projects save your editing changes automatically.",
+			"Home opens to the project list. Choose a project to open it, or import an existing video or project file. Named projects save your editing changes automatically.",
 			"A project file stores edits and points to its source video. Keep both files available when moving a project to another computer.",
 			"Use a project's menu to rename it or reveal it in its folder. Settings → Files shows the project and recording locations.",
 			"Deleting only a project keeps its source video. The separate 'Delete project and video' action also moves matching recording sidecars to Trash after confirmation.",
@@ -36,7 +36,7 @@ const sections = [
 		title: "Zoom and motion",
 		steps: [
 			"Add a zoom region above the video track, then drag its edges to set when the emphasis begins and ends.",
-			"Choose a motion preset in the settings panel. Smooth is the default; other presets include quicker and elastic movement.",
+			"Choose a motion preset in Settings. Options range from smooth camera moves to elastic presets, including Strong Bounce and Ripple Bounce.",
 			"Preview the transition at normal playback speed and adjust the region if it hides important content.",
 			"Use 'Clear all zooms' in the timeline toolbar when you want to remove every zoom effect from the project.",
 		],
@@ -47,8 +47,8 @@ const sections = [
 		steps: [
 			"Open the cursor settings in the editor to choose a built-in cursor style and adjust its size and appearance.",
 			"Configure left and right clicks separately. Each button can have its own visual effect and color.",
-			"Choose separate click sounds for left and right clicks, or select None for a silent click.",
-			"Review a few clicks in the preview before exporting; cursor presentation is rendered into the final video.",
+			"Import custom sounds for click and zoom effects. They stay in their sound lists, where you can select or delete them.",
+			"Enable Cursor Trail and adjust its size, length, duration, and color. Preview cursor and click effects before exporting; they are rendered into the final video.",
 		],
 	},
 	{

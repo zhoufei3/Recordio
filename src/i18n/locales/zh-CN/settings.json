@@ -402,6 +402,12 @@
 	"updates": {
 		"experimentalDescription": "你已选择接收实验性更新，因此可以在 Recordio 最新更新广泛发布之前选择先行测试。",
 		"title": "更新",
+		"checkNowTitle": "手动检查更新",
+		"checkNowDescription": "立即检查是否有适用于 Recordio 的新版本。",
+		"checkNow": "检查更新",
+		"checking": "正在检查…",
+		"upToDate": "当前已是最新版本",
+		"checkFailed": "检查更新失败",
 		"experimental": "实验性更新",
 		"saveFailed": "无法更改更新频道。"
 	},
