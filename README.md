@@ -9,7 +9,7 @@ Recordio 是一款免费开源的桌面录屏与视频编辑软件，适合制�
 ## 相比所用 Recordly 基础版本的改进
 
 Recordly 原本已具备屏幕录制、剪辑、缩放、背景和光标效果。以下是 Recordio 在此基础上增加或调整的内容：
-##
+## 
 - 【光标效果优化】左键与右键可以分别设置点击效果、颜色和内置音效；改善光标移动和点击动画的平滑度，增加更多可缩放的光标样式；
 - 【长时录制优化】改善长时间录制后的保存可靠性，修复大文件错误。
 - 【动效画质优化】增加更多运动预设效果，包括弹性方案；改善预览和导出时视频圆角描边及点击波纹的平滑度。
@@ -17,11 +17,11 @@ Recordly 原本已具备屏幕录制、剪辑、缩放、背景和光标效果�
 - 【导出优化】先选保存位置再导出；增加高码率选项、已用时间与动态剩余时间、完成提示音，并改进无音频视频及编码器回退的处理。
 - 【项目管理】确认删除项目及视频时，会同步将对应光标、诊断和音频配套文件移入回收站，并防止删除仍被其他项目使用的视频。
 - 【界面优化】完善简体中文界面、通知和快捷键文案；采用独立的 Recordio 应用身份和数据目录，可与 Recordly 共存。
-##
+## 
 <img width="1740" height="1133" alt="image" src="https://github.com/user-attachments/assets/6f1b34d3-9138-4656-993e-bdbc1c5ccf86" />
 <img width="321" height="792" alt="image" src="https://github.com/user-attachments/assets/7f98d72c-ed6d-40fb-a808-14d70c362d60" />
 <img width="322" height="794" alt="image" src="https://github.com/user-attachments/assets/256fbe2e-36f9-4e60-b22a-1649e0738d35" />
-<img width="323" height="789" alt="image" src="https://github.com/user-attachments/assets/54a5a352-765f-4e81-a214-b94d578d0c91" />
+
 
 
 

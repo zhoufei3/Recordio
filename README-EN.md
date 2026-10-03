@@ -19,7 +19,7 @@ The features below describe changes relative to the Recordly base used for this 
 
 ## Platforms and building
 
-The source targets Windows, macOS, and Linux.
+The source targets Windows, macOS, and Linux. 
 
 Use Node.js 22 and npm:
 
