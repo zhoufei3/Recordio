@@ -32,6 +32,7 @@ import { ensureMediaServer } from "./mediaServer";
 import { hardenWebContentsNavigation, shouldHardenWebContentsType } from "./navigationPolicy";
 import { shouldGrantDisplayCapture, shouldGrantMediaPermission } from "./permissionPolicy";
 import { ensurePackagedRendererServer, getPackagedRendererBaseUrl } from "./rendererServer";
+import { setCurrentProjectPath } from "./ipc/state";
 import {
 	checkForAppUpdates,
 	deferUpdateReminder,
@@ -217,6 +218,10 @@ function closeEditorWindowToHud(window: BrowserWindow | null) {
 	// The HUD renderer normally remains hidden while the editor is open so
 	// recording finalization can continue. Restore that HUD before destroying
 	// the editor, keeping Recordly in its ready-to-record state on the taskbar.
+	// The renderer's project state is destroyed with the editor. Clear the main
+	// process marker too, otherwise the next dashboard marks the last project as
+	// already open and clicking it only closes the dashboard without loading it.
+	setCurrentProjectPath(null);
 	window.hide();
 	if (mainWindow === window) {
 		mainWindow = null;

@@ -20,6 +20,7 @@ import {
 } from "../types";
 import { getCursorViewportScale } from "./cursorScale";
 import { computeCursorSwayRotation } from "./cursorSway";
+import { buildCursorTrailEdges, recordCursorTrailPosition, sampleCursorTrail, type TrailPosition } from "./cursorTrailGeometry";
 import { type CursorViewportRect, projectCursorPositionToViewport } from "./cursorViewport";
 import {
 	type CursorSpringTuning,
@@ -1170,6 +1171,7 @@ export class PixiCursorOverlay {
 	private cursorSpriteContainer: Container;
 	private clickRingGraphics: Graphics;
 	private trailGraphics: Graphics;
+	private renderedTrailHistory: TrailPosition[] = [];
 	private customCursorShadowSprite: Sprite;
 	private customCursorShadowFilter: BlurFilter;
 	private customCursorSprite: Sprite;
@@ -1397,6 +1399,7 @@ export class PixiCursorOverlay {
 			this.cursorVisible = false;
 			this.clickRingGraphics.clear();
 			this.trailGraphics.clear();
+			this.renderedTrailHistory = [];
 			this.lastRenderedPoint = null;
 			this.lastRenderedTimeMs = null;
 			this.swayRotation = 0;
@@ -1419,6 +1422,7 @@ export class PixiCursorOverlay {
 			this.cursorVisible = false;
 			this.clickRingGraphics.clear();
 			this.trailGraphics.clear();
+			this.renderedTrailHistory = [];
 			return;
 		}
 
@@ -1460,6 +1464,7 @@ export class PixiCursorOverlay {
 			this.cursorVisible = false;
 			this.clickRingGraphics.clear();
 			this.trailGraphics.clear();
+			this.renderedTrailHistory = [];
 			this.customCursorShadowSprite.visible = false;
 			this.customCursorSprite.visible = false;
 			for (const shadowSprite of Object.values(this.cursorShadowSprites)) {
@@ -1518,7 +1523,9 @@ export class PixiCursorOverlay {
 			1 - Math.sin(clickBounceProgress * Math.PI) * (0.08 * this.config.clickBounce),
 		);
 		const scaledH = h * getCursorStyleSizeMultiplier(this.config.style);
-		this.drawCursorTrail(samples, viewport, scaledH, timeMs, px, py);
+		// Spring snapping on slow decoded frames is not a seek. Keep the trail
+		// history across those frames; only an explicit seek resets the history.
+		this.drawCursorTrail(viewport, scaledH, timeMs, px, py, freeze);
 		const swayRotation = this.updateCursorSway(px, py, timeMs, shouldFreezeCursorMotion);
 
 		drawClickEffectGraphics(
@@ -1672,6 +1679,8 @@ export class PixiCursorOverlay {
 
 	reset(): void {
 		this.state.reset();
+		this.renderedTrailHistory = [];
+		this.trailGraphics.clear();
 		this.clickRingGraphics.clear();
 		this.cursorVisible = false;
 		for (const shadowSprite of Object.values(this.cursorShadowSprites)) {
@@ -1697,72 +1706,32 @@ export class PixiCursorOverlay {
 	}
 
 	private drawCursorTrail(
-		samples: CursorTelemetryPoint[],
 		viewport: CursorViewportRect,
 		cursorHeight: number,
 		timeMs: number,
 		headX: number,
 		headY: number,
+		freeze: boolean,
 	): void {
 		const graphics = this.trailGraphics;
 		graphics.clear();
-		if (
-			!this.config.trailEnabled ||
-			!this.cursorVisible ||
-			this.config.trailLength < 2 ||
-			samples.length === 0
-		) return;
+		if (!this.config.trailEnabled || !this.cursorVisible || this.config.trailLength < 2) {
+			this.renderedTrailHistory = [];
+			return;
+		}
+		const previous = this.renderedTrailHistory[this.renderedTrailHistory.length - 1];
+		recordCursorTrailPosition(this.renderedTrailHistory, {
+			x: (headX - viewport.x) / viewport.width,
+			y: (headY - viewport.y) / viewport.height,
+			timeMs,
+		}, this.config.trailDurationMs, freeze && previous?.timeMs !== timeMs);
+		const points = sampleCursorTrail(this.renderedTrailHistory, this.config.trailDurationMs, this.config.trailLength)
+			.map((point) => ({ ...point, x: viewport.x + point.x * viewport.width, y: viewport.y + point.y * viewport.height }));
+		const { left: leftEdge, right: rightEdge } = buildCursorTrailEdges(points, cursorHeight * 0.12 * this.config.trailSize);
+		if (leftEdge.length < 2 || rightEdge.length < 2) return;
 		const rawHex = this.config.trailColor.replace("#", "");
 		const hex = rawHex.length === 3 ? rawHex.split("").map((value) => value + value).join("") : rawHex;
 		const color = Number.parseInt(hex, 16);
-		const oldestSampleTime = samples[0].timeMs;
-		const points: Array<{ x: number; y: number; fade: number }> = [];
-		for (let index = this.config.trailLength; index >= 1; index -= 1) {
-			const progress = index / (this.config.trailLength + 1);
-			const age = this.config.trailDurationMs * progress;
-			const sampleTime = timeMs - age;
-			if (sampleTime < oldestSampleTime) continue;
-			const historicalPosition = interpolateCursorPosition(samples, sampleTime);
-			if (!historicalPosition) continue;
-			const projectedPosition = projectCursorPositionToViewport(
-				historicalPosition,
-				viewport.sourceCrop,
-			);
-			if (!projectedPosition.visible) continue;
-			points.push({
-				x: viewport.x + projectedPosition.cx * viewport.width,
-				y: viewport.y + projectedPosition.cy * viewport.height,
-				fade: 1 - progress,
-			});
-		}
-		points.push({ x: headX, y: headY, fade: 1 });
-		if (points.length < 2) return;
-
-		const leftEdge: Array<{ x: number; y: number }> = [];
-		const rightEdge: Array<{ x: number; y: number }> = [];
-		for (let index = 0; index < points.length; index += 1) {
-			const previous = points[Math.max(0, index - 1)];
-			const next = points[Math.min(points.length - 1, index + 1)];
-			let tangentX = next.x - previous.x;
-			let tangentY = next.y - previous.y;
-			let tangentLength = Math.hypot(tangentX, tangentY);
-			if (tangentLength < 0.001) continue;
-			tangentX /= tangentLength;
-			tangentY /= tangentLength;
-			const halfWidth =
-				cursorHeight * 0.12 * this.config.trailSize * points[index].fade;
-			const offsetX = -tangentY * halfWidth;
-			const offsetY = tangentX * halfWidth;
-			leftEdge.push({
-				x: points[index].x + offsetX,
-				y: points[index].y + offsetY,
-			});
-			rightEdge.push({
-				x: points[index].x - offsetX,
-				y: points[index].y - offsetY,
-			});
-		}
-		if (leftEdge.length < 2 || rightEdge.length < 2) return;
 
 		graphics.moveTo(leftEdge[0].x, leftEdge[0].y);
 		for (let index = 1; index < leftEdge.length - 1; index += 1) {

@@ -92,6 +92,7 @@ import {
 } from "./types";
 import { isAnnotationActiveAtTime } from "./videoPlayback/annotationVisibility";
 import { createClipPlayback, findPreviewClipAtTimelineTime } from "./videoPlayback/clipPlayback";
+import { drawEdgeRippleSurface, createEdgeRippleState, updateEdgeRipple } from "./videoPlayback/edgeRipple";
 import { DEFAULT_FOCUS } from "./videoPlayback/constants";
 import {
 	type CursorFollowCameraState,
@@ -117,6 +118,7 @@ import { updateOverlayIndicator } from "./videoPlayback/overlayUtils";
 import { supportsPreviewPlaybackRate } from "./videoPlayback/playbackRate";
 import { PreviewVideoSource } from "./videoPlayback/previewVideoSource";
 import { usePreviewVideoReady } from "./videoPlayback/usePreviewVideoReady";
+import { resolveCursorMotionPresetId } from "./cursorMotionPresets";
 import { getSceneEffectMetrics } from "./videoPlayback/sceneEffects";
 import {
 	resolvePreviewMotionMode,
@@ -436,6 +438,8 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 			});
 
 		const overlayRef = useRef<HTMLDivElement | null>(null);
+		const edgeRippleCanvasRef = useRef<HTMLCanvasElement | null>(null);
+		const edgeRippleStateRef = useRef(createEdgeRippleState());
 		const focusIndicatorRef = useRef<HTMLDivElement | null>(null);
 		const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
 		const webcamBubbleRef = useRef<HTMLDivElement | null>(null);
@@ -2156,6 +2160,45 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 					cursorTelemetry: cursorTelemetryRef.current,
 					cursorFollowCamera: cursorFollowCameraRef.current,
 				});
+				const edgeRipplePresetId = resolveCursorMotionPresetId({
+					zoomInDurationMs: zoomInDurationMsRef.current,
+					zoomOutDurationMs: zoomOutDurationMsRef.current,
+					cursorSize: cursorSizeRef.current,
+					cursorSmoothing: cursorSmoothingRef.current,
+					cursorSpringStiffnessMultiplier: cursorSpringStiffnessMultiplierRef.current,
+					cursorSpringDampingMultiplier: cursorSpringDampingMultiplierRef.current,
+					cursorSpringMassMultiplier: cursorSpringMassMultiplierRef.current,
+					cameraSpringStiffnessMultiplier: cameraSpringStiffnessMultiplierRef.current,
+					cameraSpringDampingMultiplier: cameraSpringDampingMultiplierRef.current,
+					cameraSpringMassMultiplier: cameraSpringMassMultiplierRef.current,
+					cursorClickBounce: cursorClickBounceRef.current,
+					cursorClickBounceDuration: cursorClickBounceDurationRef.current,
+					cursorClickEffect: cursorClickEffectRef.current,
+				});
+				const edgeRipple = updateEdgeRipple(edgeRippleStateRef.current, {
+					enabled: edgeRipplePresetId === "elastic-edge-ripple",
+					regionId: target.regionId,
+					progress: target.progress,
+					focus: target.focus,
+					zoomScale: target.scale,
+					cursorFocus: target.cursorFocus,
+					timeMs: contentTimeMs,
+					stageSize: stageSizeRef.current,
+					mask: baseMaskRef.current,
+				});
+				const rippleCanvas = edgeRippleCanvasRef.current;
+				if (rippleCanvas) {
+					rippleCanvas.style.display = edgeRipple ? "block" : "none";
+				}
+				if (rippleCanvas && edgeRipple) {
+					const { width, height } = stageSizeRef.current;
+					const canvasWidth = Math.max(1, Math.round(width));
+					const canvasHeight = Math.max(1, Math.round(height));
+					if (rippleCanvas.width !== canvasWidth) rippleCanvas.width = canvasWidth;
+					if (rippleCanvas.height !== canvasHeight) rippleCanvas.height = canvasHeight;
+					const context = rippleCanvas.getContext("2d");
+					if (context) drawEdgeRippleSurface(context, edgeRipple);
+				}
 
 				const state = animationStateRef.current;
 
@@ -2511,6 +2554,12 @@ const VideoPlayback = forwardRef<VideoPlaybackRef, VideoPlaybackProps>(
 						}}
 					/>
 				)}
+				<canvas
+					ref={edgeRippleCanvasRef}
+					className="pointer-events-none absolute inset-0 h-full w-full"
+					style={{ display: "none" }}
+					aria-hidden="true"
+				/>
 				<div
 					ref={containerRef}
 					className="absolute inset-0"

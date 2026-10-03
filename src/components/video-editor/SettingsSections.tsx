@@ -17,9 +17,11 @@ const SettingsCategoryContext = createContext<Category | null>(null);
 export function SettingsSections({
 	children,
 	categories,
+	showNavigation = true,
 }: {
 	children: ReactNode;
 	categories: Category[];
+	showNavigation?: boolean;
 }) {
 	const parent = useContext(SettingsCategoryContext);
 	const [selected, setSelected] = useState<Category>("general");
@@ -30,18 +32,20 @@ export function SettingsSections({
 	return (
 		<SettingsCategoryContext.Provider value={active}>
 			<div className="space-y-6">
-				<ChoiceGroup
-					aria-label={t("sections.title", "Settings sections")}
-					value={active}
-					onValueChange={(value) => setSelected(value as Category)}
-					size="sm"
-				>
-					{categories.map((category) => (
-						<ChoiceItem key={category} value={category}>
-							{label(category)}
-						</ChoiceItem>
-					))}
-				</ChoiceGroup>
+				{showNavigation && (
+					<ChoiceGroup
+						aria-label={t("sections.title", "Settings sections")}
+						value={active}
+						onValueChange={(value) => setSelected(value as Category)}
+						size="sm"
+					>
+						{categories.map((category) => (
+							<ChoiceItem key={category} value={category}>
+								{label(category)}
+							</ChoiceItem>
+						))}
+					</ChoiceGroup>
+				)}
 				<div role="region" aria-label={label(active)} className="space-y-6">
 					{children}
 				</div>

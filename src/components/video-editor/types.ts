@@ -147,6 +147,7 @@ export function normalizeCursorClickEffectColor(
 
 export type EditorEffectSection =
 	| "scene"
+	| "motion"
 	| "cursor"
 	| "cursorSound"
 	| "captions"

@@ -124,8 +124,12 @@
 				"description": "更明显的镜头与光标回弹，同时保持缩放过渡顺滑。"
 			},
 			"elastic-ripple": {
+				"label": "弹簧回弹",
+				"description": "更强的弹簧回弹效果，更灵动活泼的展示方式。"
+			},
+			"elastic-edge-ripple": {
 				"label": "涟漪回弹",
-				"description": "更强的弹簧回弹，点击时伴随扩散波纹。"
+				"description": "缩放靠近屏幕边缘时产生回弹，并从最近的边缘向背景扩散水波纹。"
 			}
 		},
 		"zoomInDuration": "进入时长",
@@ -241,6 +245,7 @@
 		"devSection": "开发调试",
 		"devSectionHint": "用于测试原生录制和镜头运动的临时控件。",
 		"devBadge": "开发",
+		"devControlsToggle": "显示调试设置",
 		"nativeCaptureWarningTester": "原生录制警告",
 		"nativeCaptureWarningTesterUnavailable": "当前项目已标记为无法使用原生录制。",
 		"nativeCaptureWarningTesterAvailable": "当前项目未标记为不支持原生录制，仍可打开警告窗口检查界面。",

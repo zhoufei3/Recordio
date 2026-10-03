@@ -1,6 +1,7 @@
 import type { CursorTelemetryPoint, ZoomFocus, ZoomRegion } from "../types";
 import { ZOOM_DEPTH_SCALES } from "../types";
 import { DEFAULT_FOCUS } from "./constants";
+import { interpolateCursorPosition } from "./cursorRenderer";
 import {
 	type CursorFollowCameraState,
 	computeCursorFollowFocus,
@@ -12,6 +13,8 @@ export type SceneZoomTarget = {
 	scale: number;
 	focus: ZoomFocus;
 	progress: number;
+	regionId?: string;
+	cursorFocus?: ZoomFocus;
 };
 
 export type PreviewMotionMode = "spring" | "snap" | "preserve";
@@ -110,5 +113,8 @@ export function resolveSceneZoomTarget({
 		);
 	}
 
-	return { scale, focus, progress: strength };
+	const cursorFocus = cursorTelemetry?.length
+		? interpolateCursorPosition(cursorTelemetry, cursorTimeMs) ?? undefined
+		: undefined;
+	return { scale, focus, progress: strength, regionId: region.id, cursorFocus };
 }

@@ -11,7 +11,8 @@ export type CursorMotionPresetId =
 	| "elastic-soft"
 	| "elastic-vivid"
 	| "elastic-bold"
-	| "elastic-ripple";
+	| "elastic-ripple"
+	| "elastic-edge-ripple";
 
 export interface CursorMotionPreset {
 	id: CursorMotionPresetId;
@@ -155,7 +156,7 @@ export const CURSOR_MOTION_PRESETS: Record<CursorMotionPresetId, CursorMotionPre
 		cursorSpringDampingMultiplier: 0.6,
 		cursorSpringMassMultiplier: 1.25,
 		cameraSpringStiffnessMultiplier: 1.35,
-		cameraSpringDampingMultiplier: 0.72,
+		cameraSpringDampingMultiplier: 0.62,
 		cameraSpringMassMultiplier: 1.05,
 		cursorClickBounce: 3,
 		cursorClickBounceDuration: 430,
@@ -192,6 +193,22 @@ export const CURSOR_MOTION_PRESETS: Record<CursorMotionPresetId, CursorMotionPre
 		cursorClickBounce: 4.8,
 		cursorClickBounceDuration: 620,
 		cursorClickEffect: "ripple",
+	},
+	"elastic-edge-ripple": {
+		id: "elastic-edge-ripple",
+		label: "Edge Ripple Spring",
+		zoomSmoothness: 0.5,
+		zoomInDurationMs: 980,
+		zoomOutDurationMs: 860,
+		...SHARED_CURSOR_PRESET_VALUES,
+		cursorSpringStiffnessMultiplier: 1.08,
+		cursorSpringDampingMultiplier: 0.88,
+		cursorSpringMassMultiplier: 1.1,
+		cameraSpringStiffnessMultiplier: 1.08,
+		cameraSpringDampingMultiplier: 0.62,
+		cameraSpringMassMultiplier: 1.15,
+		cursorClickBounce: 1.2,
+		cursorClickBounceDuration: 280,
 	},
 };
 

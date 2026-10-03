@@ -53,6 +53,13 @@ import {
 	stepSpringValue,
 } from "@/components/video-editor/videoPlayback/motionSmoothing";
 import { getSceneEffectMetrics } from "@/components/video-editor/videoPlayback/sceneEffects";
+import {
+	createEdgeRippleState,
+	drawEdgeRippleSurface,
+	updateEdgeRipple,
+	type EdgeRippleState,
+} from "@/components/video-editor/videoPlayback/edgeRipple";
+import { resolveCursorMotionPresetId } from "@/components/video-editor/cursorMotionPresets";
 import { resolveSceneZoomTarget } from "@/components/video-editor/videoPlayback/sceneMotion";
 import {
 	getWebcamMediaTargetTimeSeconds,
@@ -389,6 +396,10 @@ export class FrameRenderer {
 	private videoSprite: Sprite | null = null;
 	private videoTextureSource: MutableVideoTextureSource | null = null;
 	private backgroundSprite: Sprite | null = null;
+	private backgroundRippleSprite: Sprite | null = null;
+	private backgroundRippleCanvas: HTMLCanvasElement | null = null;
+	private edgeRippleState: EdgeRippleState = createEdgeRippleState();
+	private edgeRippleEnabled = false;
 	private backgroundTextureSource: MutableVideoTextureSource | null = null;
 	private videoMaskGraphics: Graphics | null = null;
 	private videoOutlineGraphics: Graphics | null = null;
@@ -462,6 +473,21 @@ export class FrameRenderer {
 
 	constructor(config: FrameRenderConfig) {
 		this.config = config;
+		this.edgeRippleEnabled = resolveCursorMotionPresetId({
+			zoomInDurationMs: config.zoomInDurationMs ?? 0,
+			zoomOutDurationMs: config.zoomOutDurationMs ?? 0,
+			cursorSize: config.cursorSize ?? 0,
+			cursorSmoothing: config.cursorSmoothing ?? 0,
+			cursorSpringStiffnessMultiplier: config.cursorSpringStiffnessMultiplier ?? 0,
+			cursorSpringDampingMultiplier: config.cursorSpringDampingMultiplier ?? 0,
+			cursorSpringMassMultiplier: config.cursorSpringMassMultiplier ?? 0,
+			cameraSpringStiffnessMultiplier: config.cameraSpringStiffnessMultiplier ?? 0,
+			cameraSpringDampingMultiplier: config.cameraSpringDampingMultiplier ?? 0,
+			cameraSpringMassMultiplier: config.cameraSpringMassMultiplier ?? 0,
+			cursorClickBounce: config.cursorClickBounce ?? 0,
+			cursorClickBounceDuration: config.cursorClickBounceDuration ?? 0,
+			cursorClickEffect: config.cursorClickEffect,
+		}) === "elastic-edge-ripple";
 		this.animationState = createAnimationState();
 		this.motionBlurState = createMotionBlurState();
 		this.springScale = createSpringState(1);
@@ -1110,6 +1136,10 @@ export class FrameRenderer {
 		this.backgroundSprite = null;
 		this.backgroundTextureSource = null;
 		this.backgroundBlurFilter = null;
+		this.backgroundRippleSprite?.destroy({ texture: true, textureSource: true });
+		this.backgroundRippleSprite = null;
+		this.backgroundRippleCanvas = null;
+		this.edgeRippleState = createEdgeRippleState();
 		this.backgroundContainer?.removeChildren();
 	}
 
@@ -1255,6 +1285,7 @@ export class FrameRenderer {
 			const backgroundTexture = Texture.from(backgroundSource);
 			this.backgroundSprite = new Sprite(backgroundTexture);
 			this.backgroundContainer?.addChild(this.backgroundSprite);
+			this.ensureBackgroundRippleSurface();
 			applyCoverLayoutToSprite(
 				this.backgroundSprite,
 				backgroundSource.width,
@@ -1277,6 +1308,7 @@ export class FrameRenderer {
 			ctx.fillRect(0, 0, fallback.width, fallback.height);
 			this.backgroundSprite = new Sprite(Texture.from(fallback));
 			this.backgroundContainer?.addChild(this.backgroundSprite);
+			this.ensureBackgroundRippleSurface();
 			applyCoverLayoutToSprite(
 				this.backgroundSprite,
 				fallback.width,
@@ -1369,6 +1401,44 @@ export class FrameRenderer {
 			this.config.width / 2,
 			this.config.height / 2,
 		);
+		this.ensureBackgroundRippleSurface();
+	}
+
+	private ensureBackgroundRippleSurface(): void {
+		if (!this.backgroundContainer || !this.edgeRippleEnabled) return;
+		if (!this.backgroundRippleSprite) {
+			this.backgroundRippleCanvas = document.createElement("canvas");
+			this.backgroundRippleCanvas.width = this.config.width;
+			this.backgroundRippleCanvas.height = this.config.height;
+			this.backgroundRippleSprite = new Sprite(Texture.from(this.backgroundRippleCanvas));
+		}
+		if (this.backgroundRippleSprite.parent !== this.backgroundContainer) {
+			this.backgroundContainer.addChild(this.backgroundRippleSprite);
+		}
+	}
+
+	private updateBackgroundEdgeRipple(
+		timeMs: number,
+		target: ReturnType<typeof resolveSceneZoomTarget>,
+	): void {
+		const sprite = this.backgroundRippleSprite;
+		const context = this.backgroundRippleCanvas?.getContext("2d");
+		const layout = this.layoutCache;
+		if (!sprite || !context || !layout) return;
+
+		const frame = updateEdgeRipple(this.edgeRippleState, {
+			enabled: this.edgeRippleEnabled,
+			regionId: target.regionId,
+			progress: target.progress,
+			focus: target.focus,
+			zoomScale: target.scale,
+			cursorFocus: target.cursorFocus,
+			timeMs,
+			stageSize: layout.stageSize,
+			mask: layout.maskRect,
+		});
+		drawEdgeRippleSurface(context, frame);
+		sprite.texture.source.update();
 	}
 
 	private createPreblurredBackgroundCanvas(
@@ -3209,6 +3279,8 @@ export class FrameRenderer {
 			);
 		}
 
+		this.updateBackgroundEdgeRipple(timeMs, target);
+
 		return Math.max(
 			Math.abs(state.appliedScale - previousScale),
 			Math.abs(state.x - previousX) / Math.max(1, this.layoutCache.stageSize.width),
@@ -3284,6 +3356,7 @@ export class FrameRenderer {
 		if (this.backgroundSprite) {
 			this.backgroundSprite.filters = null;
 		}
+		this.backgroundRippleSprite?.destroy({ texture: true, textureSource: true });
 		this.zoomBlurFilter?.destroy();
 		this.motionBlurFilter?.destroy();
 		this.backgroundBlurFilter?.destroy();
@@ -3312,6 +3385,8 @@ export class FrameRenderer {
 		this.videoSprite = null;
 		this.videoTextureSource = null;
 		this.backgroundSprite = null;
+		this.backgroundRippleSprite = null;
+		this.backgroundRippleCanvas = null;
 		this.backgroundTextureSource = null;
 		this.videoMaskGraphics = null;
 		this.videoOutlineGraphics = null;

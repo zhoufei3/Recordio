@@ -36,7 +36,7 @@ const sections = [
 		title: "Zoom and motion",
 		steps: [
 			"Add a zoom region above the video track, then drag its edges to set when the emphasis begins and ends.",
-			"Choose a motion preset in Settings. Options range from smooth camera moves to elastic presets, including Strong Bounce and Ripple Bounce.",
+			"Choose a motion preset in Settings. Options range from smooth camera moves to elastic presets, including Strong Bounce, Ripple Bounce, and Edge Ripple Bounce.",
 			"Preview the transition at normal playback speed and adjust the region if it hides important content.",
 			"Use 'Clear all zooms' in the timeline toolbar when you want to remove every zoom effect from the project.",
 		],

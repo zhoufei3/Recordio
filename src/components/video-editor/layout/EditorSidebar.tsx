@@ -1,6 +1,14 @@
 import { AccountAvatar } from "@/components/ui/account-avatar";
 import type { User } from "@supabase/supabase-js";
-import { Camera, ClosedCaptioning, Cursor, Gear, FrameCorners, SpeakerHigh } from "@/components/ui/icons";
+import {
+	Camera,
+	ClosedCaptioning,
+	Cursor,
+	FrameCorners,
+	Gear,
+	BoundingBox,
+	SpeakerHigh,
+} from "@/components/ui/icons";
 import {
 	ToggleButtonGroup,
 	ToggleButton,
@@ -49,6 +57,11 @@ export function EditorSidebar({
 				id: "scene" as const,
 				label: t("settings.sections.scene", "Scene"),
 				icon: FrameCorners,
+			},
+			{
+				id: "motion" as const,
+				label: t("settings.sections.motion", "Motion"),
+				icon: BoundingBox,
 			},
 			{ id: "cursor" as const, label: t("settings.sections.cursor", "Cursor"), icon: Cursor },
 			{ id: "cursorSound" as const, label: t("settings.sections.cursorSound", "Sound"), icon: SpeakerHigh },

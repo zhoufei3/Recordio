@@ -138,6 +138,10 @@
 			"elastic-ripple": {
 				"label": "Ripple Spring",
 				"description": "A stronger spring rebound paired with an expanding click ripple."
+			},
+			"elastic-edge-ripple": {
+				"label": "Edge Ripple Bounce",
+				"description": "Bounces near the screen edge and sends water-like ripples into the background from the nearest edge."
 			}
 		},
 		"zoomInDuration": "Zoom In Duration",
@@ -253,6 +257,7 @@
 		"devSection": "Dev",
 		"devSectionHint": "Temporary testing controls for native capture and motion tuning.",
 		"devBadge": "DEV",
+		"devControlsToggle": "Show debug controls",
 		"nativeCaptureWarningTester": "Native capture warning",
 		"nativeCaptureWarningTesterUnavailable": "This project is currently marked as native capture unavailable.",
 		"nativeCaptureWarningTesterAvailable": "This project is not marked as unsupported, but you can still open the modal for UI testing.",

@@ -236,6 +236,7 @@ const MOTION_PRESET_ORDER: CursorMotionPresetId[] = [
 	"elastic-vivid",
 	"elastic-bold",
 	"elastic-ripple",
+	"elastic-edge-ripple",
 ];
 
 const CURSOR_CLICK_EFFECT_OPTIONS: Array<{
@@ -1349,6 +1350,7 @@ export function SettingsPanel({
 	);
 
 	const defaultWebcam = initialEditorPreferences.webcam;
+	const [devControlsExpanded, setDevControlsExpanded] = useState(false);
 	const [builtInCursorPreviewUrls, setBuiltInCursorPreviewUrls] = useState<
 		Partial<Record<string, string>>
 	>(() => Object.fromEntries(
@@ -2495,7 +2497,14 @@ export function SettingsPanel({
 	const effectSectionContent = (() => {
 		const settingsSectionContent = (
 			<SettingsSections
-				categories={advanced ? ["general", "motion", "advanced"] : ["general", "motion"]}
+				categories={
+					activeEffectSection === "motion"
+						? ["motion"]
+						: advanced
+							? ["general", "advanced"]
+							: ["general"]
+				}
+				showNavigation={activeEffectSection !== "motion"}
 			>
 				<SettingsCategory category="general">
 					<SettingsRow title={t("editor.theme.appearance", "Appearance")} stacked>
@@ -2677,11 +2686,23 @@ export function SettingsPanel({
 										)}
 									</div>
 								</div>
-								<span className="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium uppercase tracking-wider text-accent">
-									{tSettings("effects.devBadge", "DEV")}
-								</span>
+								<div className="flex items-center gap-2">
+									<span className="rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium uppercase tracking-wider text-accent">
+										{tSettings("effects.devBadge", "DEV")}
+									</span>
+									<Switch
+										checked={devControlsExpanded}
+										onCheckedChange={setDevControlsExpanded}
+										aria-label={tSettings(
+											"effects.devControlsToggle",
+											"Show debug controls",
+										)}
+									/>
+								</div>
 							</div>
 
+							{devControlsExpanded ? (
+								<>
 							<div className="rounded-lg border border-foreground/10 bg-background/60 px-3 py-3">
 								<div className="flex items-start justify-between gap-3">
 									<div>
@@ -2835,6 +2856,8 @@ export function SettingsPanel({
 									formatValue={(value) => `${value.toFixed(2)}×`}
 								/>
 							</div>
+								</>
+							) : null}
 						</section>
 					) : null}
 				</SettingsCategory>
@@ -3088,6 +3111,7 @@ export function SettingsPanel({
 
 		switch (activeEffectSection) {
 			case "settings":
+			case "motion":
 				return settingsSectionContent;
 			case "scene":
 				return sceneSectionContent;
@@ -3110,11 +3134,11 @@ export function SettingsPanel({
 					<section className="flex flex-col gap-4">
 						<div className="flex justify-end">
 							<Button type="button" variant="ghost" size="sm" className="text-xs text-muted" onClick={() => {
-								onLeftClickSoundChange?.(initialEditorPreferences.leftClickSound);
-								onRightClickSoundChange?.(initialEditorPreferences.rightClickSound);
-								onDefaultZoomSoundChange?.(initialEditorPreferences.defaultZoomSoundId);
-								onDefaultZoomPanSoundChange?.(initialEditorPreferences.defaultZoomPanSoundId);
-								onDefaultZoomOutSoundChange?.(initialEditorPreferences.defaultZoomOutSoundId);
+								onLeftClickSoundChange?.("none");
+								onRightClickSoundChange?.("none");
+								onDefaultZoomSoundChange?.("none");
+								onDefaultZoomPanSoundChange?.("none");
+								onDefaultZoomOutSoundChange?.("none");
 							}}>
 								{t("common.actions.reset", "Reset")}
 							</Button>
