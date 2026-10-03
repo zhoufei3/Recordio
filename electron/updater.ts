@@ -58,7 +58,7 @@ export interface UpdateToastPayload {
 	totalBytes?: number;
 	remainingBytes?: number;
 	bytesPerSecond?: number;
-	primaryAction?: "install-and-restart" | "retry-check";
+	primaryAction?: "install-and-restart" | "retry-check" | "manual-download";
 }
 
 interface DownloadProgressSnapshot {
@@ -303,10 +303,10 @@ function createUpdateErrorToastPayload(
 	return {
 		version,
 		phase: "error",
-		detail: `The update could not be downloaded. ${String(error)}`,
+		detail: String(error),
 		delayMs: UPDATE_REMINDER_DELAY_MS,
 		isExperimental,
-		primaryAction: "install-and-restart",
+		primaryAction: "manual-download",
 	};
 }
 

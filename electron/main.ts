@@ -43,7 +43,6 @@ import {
 	getUpdaterLogPath,
 	getUpdateStatusSummary,
 	installDownloadedUpdateNow,
-	previewNativeUpdateDialog,
 	previewUpdateToast,
 	setExperimentalUpdatesEnabled,
 	setupAutoUpdates,
@@ -606,10 +605,6 @@ function syncDockIcon() {
 }
 
 function sendUpdateToastToWindows(channel: "update-toast-state", payload: unknown) {
-	if (process.platform !== "darwin") {
-		return false;
-	}
-
 	if (!payload) {
 		const existingWindow = getUpdateToastWindow();
 		if (existingWindow) {
@@ -707,11 +702,6 @@ ipcMain.handle("set-experimental-updates-enabled", async (_event, enabled: unkno
 });
 
 ipcMain.handle("preview-update-toast", async () => {
-	if (process.platform !== "darwin") {
-		await previewNativeUpdateDialog(getUpdateDialogWindow);
-		return { success: true };
-	}
-
 	return { success: previewUpdateToast(sendUpdateToastToWindows) };
 });
 
@@ -1072,12 +1062,7 @@ app.whenReady().then(async () => {
 	setupAutoUpdates(getUpdateDialogWindow, sendUpdateToastToWindows);
 	if (IS_DEV && process.env.RECORDLY_DEV_PREVIEW_UPDATE === "1") {
 		setTimeout(() => {
-			if (process.platform === "darwin") {
-				previewUpdateToast(sendUpdateToastToWindows);
-				return;
-			}
-
-			void previewNativeUpdateDialog(getUpdateDialogWindow);
+			previewUpdateToast(sendUpdateToastToWindows);
 		}, 750);
 	}
 

@@ -21,7 +21,7 @@ export type UpdateToastPayload = {
 	transferredBytes?: number;
 	totalBytes?: number;
 	bytesPerSecond?: number;
-	primaryAction?: "install-and-restart" | "retry-check";
+	primaryAction?: "install-and-restart" | "retry-check" | "manual-download";
 };
 
 function formatBytes(value: number | undefined) {
@@ -65,12 +65,37 @@ function getDetail(payload: UpdateToastPayload, t: Translate) {
 		);
 	}
 
-	return payload.detail;
+	switch (payload.phase) {
+		case "available":
+			return t(
+				"launch.updateToast.availableDescription",
+				"A new Recordio update is ready to download.",
+				{ version: payload.version },
+			);
+		case "downloading":
+			return t(
+				"launch.updateToast.downloadingDescription",
+				"Downloading the update. You can track the progress below.",
+			);
+		case "ready":
+			return t(
+				"launch.updateToast.readyDescription",
+				"The update is downloaded and ready to install.",
+			);
+		case "error":
+			return t(
+				"launch.updateToast.downloadFailedDescription",
+				"The download failed. Open Settings > About and use Cloud download to download it manually.",
+			);
+	}
 }
 
 function getPrimaryLabel(payload: UpdateToastPayload, t: Translate) {
 	if (payload.primaryAction === "retry-check") {
 		return t("launch.updateToast.tryAgain", "Try again");
+	}
+	if (payload.primaryAction === "manual-download") {
+		return t("launch.updateToast.manualDownload", "Manual download");
 	}
 	return payload.phase === "ready"
 		? t("launch.updateToast.restartToUpdate", "Restart to update")
@@ -136,6 +161,10 @@ export function UpdateToastWindow({
 
 	const handlePrimaryAction = async () => {
 		if (payload.phase === "downloading") return;
+		if (payload.primaryAction === "manual-download") {
+			await window.electronAPI.openExternalUrl("https://dub.sh/Recordio");
+			return;
+		}
 
 		if (payload.primaryAction === "retry-check") {
 			await window.electronAPI.checkForAppUpdates();
@@ -184,7 +213,13 @@ export function UpdateToastWindow({
 
 					{payload.phase === "downloading" ? (
 						<div className={styles.progressBlock}>
-							<ProgressBar aria-label="Downloading update" value={progress}>
+							<ProgressBar
+								aria-label={t(
+									"launch.updateToast.progressLabel",
+									"Update download progress",
+								)}
+								value={progress}
+							>
 								<ProgressBar.Track>
 									<ProgressBar.Fill />
 								</ProgressBar.Track>
