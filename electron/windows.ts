@@ -769,6 +769,13 @@ export function createUpdateToastWindow(): BrowserWindow {
 		skipTransformProcessType: process.platform === "darwin",
 	});
 	updateToastWindow = win;
+	// Windows can recreate transparent-window hit testing on focus changes.
+	// This window contains buttons and must always receive mouse input.
+	if (process.platform === "win32") {
+		const receiveMouseInput = () => win.setIgnoreMouseEvents(false);
+		win.on("show", receiveMouseInput);
+		win.on("focus", receiveMouseInput);
+	}
 
 	win.on("closed", () => {
 		if (updateToastWindow === win) {
@@ -794,6 +801,16 @@ export function getUpdateToastWindow(): BrowserWindow | null {
 
 export function showUpdateToastWindow(): BrowserWindow {
 	const win = getUpdateToastWindow() ?? createUpdateToastWindow();
+	if (process.platform === "win32") {
+		const focusedWindow = BrowserWindow.getFocusedWindow();
+		const editor =
+			focusedWindow && editorWindows.has(focusedWindow)
+				? focusedWindow
+				: [...editorWindows].find((editor) => !editor.isDestroyed() && editor.isVisible()) ?? null;
+		// An owned, non-modal window stays above its editor when the editor is activated.
+		if (win.getParentWindow() !== editor) win.setParentWindow(editor);
+		win.setIgnoreMouseEvents(false);
+	}
 	const hud = getHudOverlayWindow();
 	if (!win.isVisible()) {
 		hudWasVisibleBeforeUpdateToast = Boolean(hud?.isVisible());
@@ -986,6 +1003,16 @@ export function createEditorWindow(): BrowserWindow {
 	recordingPreparationActive = false;
 	editorWindows.add(win);
 	notifyEditorMode();
+	if (process.platform === "win32") {
+		win.on("focus", () => {
+			if (getUpdateToastWindow()?.isVisible()) showUpdateToastWindow();
+		});
+		win.on("close", () => {
+			// Keep the update notification alive when its editor closes.
+			const toast = getUpdateToastWindow();
+			if (toast?.getParentWindow() === win) toast.setParentWindow(null);
+		});
+	}
 	win.once("closed", () => {
 		editorWindows.delete(win);
 		notifyEditorMode();
