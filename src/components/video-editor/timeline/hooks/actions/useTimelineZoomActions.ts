@@ -38,6 +38,7 @@ export function useTimelineZoomActions({
 	const { zoom: zoomRegions, clip: clipRegions } = regions;
 	const { disableSuggestedZooms } = options;
 	const defaultRegionDurationMs = useMemo(() => Math.min(1000, totalMs), [totalMs]);
+	const manualZoomDurationMs = useMemo(() => Math.min(5000, totalMs), [totalMs]);
 
 	const canPlaceZoomAtMs = useCallback(
 		(startMs: number) => {
@@ -45,7 +46,7 @@ export function useTimelineZoomActions({
 				return false;
 			}
 
-			const defaultDuration = Math.min(defaultRegionDurationMs, totalMs);
+			const defaultDuration = manualZoomDurationMs;
 			if (defaultDuration <= 0) {
 				return false;
 			}
@@ -71,7 +72,7 @@ export function useTimelineZoomActions({
 
 			return !isOverlapping && availableDuration >= defaultDuration;
 		},
-		[videoDuration, totalMs, defaultRegionDurationMs, clipRegions, zoomRegions],
+		[videoDuration, totalMs, manualZoomDurationMs, clipRegions, zoomRegions],
 	);
 
 	const addZoomAtMs = useCallback(
@@ -80,7 +81,7 @@ export function useTimelineZoomActions({
 				return;
 			}
 
-			const defaultDuration = Math.min(defaultRegionDurationMs, totalMs);
+			const defaultDuration = manualZoomDurationMs;
 			if (defaultDuration <= 0) {
 				return;
 			}
@@ -96,7 +97,7 @@ export function useTimelineZoomActions({
 
 			onZoomAdded({ start: startPos, end: startPos + defaultDuration });
 		},
-		[videoDuration, totalMs, defaultRegionDurationMs, canPlaceZoomAtMs, onZoomAdded],
+		[videoDuration, totalMs, manualZoomDurationMs, canPlaceZoomAtMs, onZoomAdded],
 	);
 
 	const handleAddZoom = useCallback(() => {

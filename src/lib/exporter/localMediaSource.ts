@@ -4,6 +4,7 @@ import { fromFileUrl, toFileUrl } from "@/components/video-editor/projectPersist
 const NOOP = () => undefined;
 const REMOTE_MEDIA_URL_PATTERN = /^(https?:|blob:|data:)/i;
 const BUNDLED_ASSET_PATH_PREFIXES = ["/wallpapers/", "/app-icons/"];
+const RENDERER_ASSET_URL_PREFIXES = ["/assets/", "/src/assets/"];
 
 export function isAbsoluteLocalPath(resource: string) {
 	return (
@@ -17,11 +18,22 @@ function isBundledAssetPath(resource: string) {
 	return BUNDLED_ASSET_PATH_PREFIXES.some((prefix) => resource.startsWith(prefix));
 }
 
+function isRendererAssetUrl(resource: string) {
+	return RENDERER_ASSET_URL_PREFIXES.some((prefix) => resource.startsWith(prefix));
+}
+
 export function isLocalMediaServerUrl(resource: string) {
 	return getLocalMediaServerPath(resource) !== null;
 }
 
 export function getLocalFilePath(resource: string) {
+	// Vite emits imported files as root-relative URLs (for example
+	// /assets/typing-sound-<hash>.mp3). They are served by the renderer server,
+	// not located at the filesystem root.
+	if (isRendererAssetUrl(resource)) {
+		return null;
+	}
+
 	const localMediaServerPath = getLocalMediaServerPath(resource);
 	if (localMediaServerPath) {
 		return localMediaServerPath;
@@ -75,6 +87,10 @@ function inferMimeType(filePath: string) {
 }
 
 export async function resolveMediaResourceUrl(resource: string): Promise<string> {
+	if (isRendererAssetUrl(resource) && typeof window !== "undefined") {
+		return new URL(resource, window.location.href).href;
+	}
+
 	const localFilePath = getLocalFilePath(resource);
 	if (!localFilePath) {
 		return resource;

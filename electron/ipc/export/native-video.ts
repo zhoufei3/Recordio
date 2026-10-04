@@ -3919,10 +3919,12 @@ export async function probeNativeVideoEncoder(
 export async function resolveNativeVideoEncoder(
 	ffmpegPath: string,
 	encodingMode: NativeExportEncodingMode,
+	requireHardwareEncoder = false,
 ) {
 	if (
 		cachedNativeVideoEncoder?.ffmpegPath === ffmpegPath &&
-		cachedNativeVideoEncoder?.encodingMode === encodingMode
+		cachedNativeVideoEncoder?.encodingMode === encodingMode &&
+		(!requireHardwareEncoder || cachedNativeVideoEncoder.encoderName !== "libx264")
 	) {
 		return cachedNativeVideoEncoder.encoderName;
 	}
@@ -3933,6 +3935,7 @@ export async function resolveNativeVideoEncoder(
 	];
 
 	for (const encoderName of candidates) {
+		if (requireHardwareEncoder && encoderName === "libx264") continue;
 		if (!availableEncoders.has(encoderName)) {
 			continue;
 		}

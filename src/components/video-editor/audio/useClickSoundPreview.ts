@@ -1,5 +1,6 @@
 import { type RefObject, useEffect, useMemo, useRef } from "react";
 import { resolveMediaResourceUrl } from "@/lib/exporter/localMediaSource";
+import type { TypingSoundId } from "../typingSounds";
 import type { ClickSoundId } from "../clickSounds";
 import { buildEffectAudioRegions } from "../effectAudio";
 import type { ClipRegion, CursorTelemetryPoint, ZoomRegion } from "../types";
@@ -18,6 +19,9 @@ export function useClickSoundPreview({
 	disabledEffectAudioIds,
 	leftSound,
 	rightSound,
+	typingTelemetry,
+	typingSound,
+	typingVolume,
 	currentTime,
 	isPlaying,
 	volume,
@@ -33,24 +37,61 @@ export function useClickSoundPreview({
 	disabledEffectAudioIds: string[];
 	leftSound: ClickSoundId;
 	rightSound: ClickSoundId;
+	typingTelemetry?: CursorTelemetryPoint[];
+	typingSound?: TypingSoundId;
+	typingVolume?: number;
 	currentTime: number;
 	isPlaying: boolean;
 	volume: number;
 	playbackRef: RefObject<VideoPlaybackRef | null>;
 }) {
 	const regions = useMemo(
-		() => buildEffectAudioRegions({ telemetry, clips, zooms, leftSound, rightSound, connectZooms, zoomInDurationMs, volumes: effectAudioVolumes, startOverrides: effectAudioStartOverrides, disabledIds: disabledEffectAudioIds }).sort((a, b) => a.startMs - b.startMs),
-		[telemetry, clips, zooms, connectZooms, zoomInDurationMs, leftSound, rightSound, effectAudioVolumes, effectAudioStartOverrides, disabledEffectAudioIds],
+		() =>
+			buildEffectAudioRegions({
+				telemetry,
+				clips,
+				zooms,
+				leftSound,
+				rightSound,
+				typingTelemetry,
+				typingSound,
+				typingVolume,
+				connectZooms,
+				zoomInDurationMs,
+				volumes: effectAudioVolumes,
+				startOverrides: effectAudioStartOverrides,
+				disabledIds: disabledEffectAudioIds,
+			}).sort((a, b) => a.startMs - b.startMs),
+		[
+			telemetry,
+			clips,
+			zooms,
+			connectZooms,
+			zoomInDurationMs,
+			leftSound,
+			rightSound,
+			typingTelemetry,
+			typingSound,
+			typingVolume,
+			effectAudioVolumes,
+			effectAudioStartOverrides,
+			disabledEffectAudioIds,
+		],
 	);
 	const contextRef = useRef<AudioContext | null>(null);
 	const buffersRef = useRef(new Map<string, AudioBuffer>());
 	const lastTimeRef = useRef<number | null>(null);
 	const nextIndexRef = useRef(0);
 	const pendingRegionsRef = useRef(new Map<string, (typeof regions)[number]>());
+	const activeSourcesRef = useRef(new Set<AudioBufferSourceNode>());
 	const fallbackTimeRef = useRef(currentTime);
 	fallbackTimeRef.current = currentTime;
 
 	useEffect(() => {
+		const paths = new Set(regions.map((region) => region.audioPath));
+		for (const path of buffersRef.current.keys()) {
+			if (!paths.has(path)) buffersRef.current.delete(path);
+		}
 		if (regions.length === 0) return;
 		const context = contextRef.current ?? new AudioContext();
 		contextRef.current = context;
@@ -68,7 +109,9 @@ export function useClickSoundPreview({
 				})
 				.catch(() => undefined);
 		}
-		return () => { cancelled = true; };
+		return () => {
+			cancelled = true;
+		};
 	}, [regions]);
 
 	useEffect(() => {
@@ -94,16 +137,29 @@ export function useClickSoundPreview({
 		const scheduleAt = (time: number) => {
 			const previous = lastTimeRef.current;
 			lastTimeRef.current = time;
-			if (previous === null || time < previous) {
+			if (previous === null || time < previous || time - previous > 0.5) {
+				for (const source of activeSourcesRef.current) {
+					try {
+						source.stop();
+					} catch {}
+				}
+				activeSourcesRef.current.clear();
 				pendingRegionsRef.current.clear();
-				nextIndexRef.current = regions.findIndex((region) => region.startMs >= time * 1000);
+				nextIndexRef.current = regions.findIndex(
+					(region) =>
+						region.startMs >= time * 1000 ||
+						(region.effectKind === "typing" && region.endMs > time * 1000),
+				);
 				if (nextIndexRef.current < 0) nextIndexRef.current = regions.length;
-				return;
 			}
 			const playRegion = (region: (typeof regions)[number]) => {
 				const buffer = buffersRef.current.get(region.audioPath);
 				if (!buffer) {
-					if (time * 1000 - region.startMs > MAX_PENDING_AUDIO_DECODE_WAIT_MS) {
+					if (
+						time * 1000 >= region.endMs ||
+						(region.effectKind !== "typing" &&
+							time * 1000 - region.startMs > MAX_PENDING_AUDIO_DECODE_WAIT_MS)
+					) {
 						pendingRegionsRef.current.delete(region.id);
 						return;
 					}
@@ -119,13 +175,26 @@ export function useClickSoundPreview({
 					source.buffer = buffer;
 					gain.gain.value = Math.max(0, Math.min(1, volume)) * region.volume;
 					source.connect(gain).connect(context.destination);
-					source.start(0, lateBySeconds);
+					activeSourcesRef.current.add(source);
+					source.onended = () => {
+						activeSourcesRef.current.delete(source);
+						source.disconnect();
+						gain.disconnect();
+					};
+					source.start(
+						0,
+						lateBySeconds,
+						Math.max(0, (region.endMs - region.startMs) / 1000 - lateBySeconds),
+					);
 				} catch {
 					// An invalid or stale cue must not interrupt scheduling later clicks.
 				}
 			};
 			for (const region of pendingRegionsRef.current.values()) playRegion(region);
-			while (nextIndexRef.current < regions.length && regions[nextIndexRef.current].startMs <= time * 1000) {
+			while (
+				nextIndexRef.current < regions.length &&
+				regions[nextIndexRef.current].startMs <= time * 1000
+			) {
 				const region = regions[nextIndexRef.current++];
 				playRegion(region);
 			}
@@ -138,8 +207,22 @@ export function useClickSoundPreview({
 			frame = requestAnimationFrame(tick);
 		};
 		tick();
-		return () => cancelAnimationFrame(frame);
+		return () => {
+			cancelAnimationFrame(frame);
+			for (const source of activeSourcesRef.current) {
+				try {
+					source.stop();
+				} catch {}
+			}
+			activeSourcesRef.current.clear();
+			lastTimeRef.current = null;
+		};
 	}, [isPlaying, playbackRef, regions, volume]);
 
-	useEffect(() => () => { void contextRef.current?.close(); }, []);
+	useEffect(
+		() => () => {
+			void contextRef.current?.close();
+		},
+		[],
+	);
 }

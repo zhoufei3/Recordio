@@ -5,6 +5,7 @@ import {
 	hasLoggedInteractionHookFailure,
 	interactionCaptureCleanup,
 	isCursorCaptureActive,
+	activeCursorSamples,
 	lastLeftClick,
 	setHasLoggedInteractionHookFailure,
 	setInteractionCaptureCleanup,
@@ -233,7 +234,7 @@ export function recordCursorMouseUp() {
 	pushCursorSample(point.cx, point.cy, getCursorCaptureElapsedMs(), "mouseup");
 }
 
-export async function startInteractionCapture() {
+export async function startInteractionCapture(captureTyping = true) {
 	if (!isCursorCaptureActive) {
 		return;
 	}
@@ -289,6 +290,49 @@ export async function startInteractionCapture() {
 			setLinuxCursorScreenPoint({ x: point.x, y: point.y, updatedAt: Date.now() });
 		};
 
+		const pressedKeys = new Set<number>();
+		let lastTypingTimeMs = -Infinity;
+		const onKeyDown = (event: HookMouseEvent) => {
+			const key = event.keycode;
+			if (typeof key !== "number" || pressedKeys.has(key)) return;
+			pressedKeys.add(key);
+			if (key === 54 || key === 56) return;
+			if (
+				!isCursorCaptureActive ||
+				isCursorCapturePaused() ||
+				event.ctrlKey ||
+				event.altKey ||
+				event.metaKey
+			)
+				return;
+			// Printable scan codes, space, backspace, enter, and numeric keypad. No key values are persisted.
+			if (
+				!(
+					(key >= 2 && key <= 14) ||
+					(key >= 16 && key <= 28) ||
+					(key >= 30 && key <= 41) ||
+					key === 43 ||
+					(key >= 44 && key <= 57) ||
+					(key >= 71 && key <= 83) ||
+					key === 3637
+				)
+			)
+				return;
+			const timeMs = getCursorCaptureElapsedMs();
+			if (timeMs - lastTypingTimeMs < 30) return;
+			lastTypingTimeMs = timeMs;
+			const point = getNormalizedCursorPoint();
+			if (!point) return;
+			pushCursorSample(point.cx, point.cy, timeMs, "move");
+			activeCursorSamples[activeCursorSamples.length - 1].typing = true;
+		};
+		const onKeyUp = (event: HookMouseEvent) => {
+			if (typeof event.keycode === "number") pressedKeys.delete(event.keycode);
+		};
+		if (captureTyping) {
+			hook.on("keydown", onKeyDown);
+			hook.on("keyup", onKeyUp);
+		}
 		hook.on("mousedown", onMouseDown);
 		hook.on("mouseup", onMouseUp);
 		if (process.platform === "linux") {
@@ -298,12 +342,16 @@ export async function startInteractionCapture() {
 		setInteractionCaptureCleanup(() => {
 			try {
 				if (typeof hook.off === "function") {
+					hook.off("keydown", onKeyDown);
+					hook.off("keyup", onKeyUp);
 					hook.off("mousedown", onMouseDown);
 					hook.off("mouseup", onMouseUp);
 					if (process.platform === "linux") {
 						hook.off("mousemove", onMouseMove);
 					}
 				} else if (typeof hook.removeListener === "function") {
+					hook.removeListener("keydown", onKeyDown);
+					hook.removeListener("keyup", onKeyUp);
 					hook.removeListener("mousedown", onMouseDown);
 					hook.removeListener("mouseup", onMouseUp);
 					if (process.platform === "linux") {

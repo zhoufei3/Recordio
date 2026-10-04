@@ -221,7 +221,13 @@
 		"expand": "展開時間軸",
 		"collapse": "摺疊時間軸",
 		"emptyVideo": "No Video Loaded",
-		"dropVideo": "Drag and drop a video to start editing"
+		"dropVideo": "Drag and drop a video to start editing",
+		"soundPicker": {
+			"title": "內建音效",
+			"button": "音效",
+			"categories": { "click": "滑鼠點擊音效", "transition": "轉場音效", "typing": "鍵盤打字音效" },
+			"adding": "新增中…"
+		}
 	},
 	"openRecordingsFolder": "打開錄製資料夾",
 	"dashboard": {

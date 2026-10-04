@@ -166,6 +166,8 @@ export function useProjectLifecycle(input: Input) {
 		appearance.setRightClickEffect(editor.rightClickEffect);
 		appearance.setLeftClickSound(editor.leftClickSound);
 		appearance.setRightClickSound(editor.rightClickSound);
+		appearance.setTypingSound(editor.typingSound ?? "none");
+		appearance.setTypingSoundVolume(editor.typingSoundVolume ?? 0.35);
 		appearance.setZoomSmoothness(editor.zoomSmoothness);
 		appearance.setZoomClassicMode(editor.zoomClassicMode);
 		appearance.setCursorMotionBlur(editor.cursorMotionBlur);

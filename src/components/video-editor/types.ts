@@ -1,4 +1,4 @@
-export type ZoomDepth = 1 | 2 | 3 | 4 | 5 | 6;
+export type ZoomDepth = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
 export interface ZoomFocus {
 	cx: number; // normalized horizontal center (0-1)
@@ -20,6 +20,7 @@ export interface ZoomRegion {
 }
 
 export interface CursorTelemetryPoint {
+	typing?: boolean;
 	timeMs: number;
 	cx: number;
 	cy: number;
@@ -605,7 +606,7 @@ export interface AudioRegion {
 	volume: number;
 	normalize?: boolean;
 	trackIndex?: number;
-	effectKind?: "click" | "zoom";
+	effectKind?: "click" | "zoom" | "typing";
 	label?: string;
 }
 
@@ -680,14 +681,24 @@ export const SPEED_OPTIONS: Array<{ speed: PlaybackSpeed; label: string }> = [
 
 export const DEFAULT_PLAYBACK_SPEED: PlaybackSpeed = 1.5;
 
-export const ZOOM_DEPTH_SCALES: Record<ZoomDepth, number> = {
-	1: 1.25,
-	2: 1.5,
-	3: 1.8,
-	4: 2.2,
-	5: 3.5,
-	6: 5.0,
-};
+export const ZOOM_DEPTH_OPTIONS: Array<{ depth: ZoomDepth; scale: number; label: string }> = [
+	{ depth: 7, scale: 1.15, label: "1.15×" },
+	{ depth: 1, scale: 1.25, label: "1.25×" },
+	{ depth: 8, scale: 1.35, label: "1.35×" },
+	{ depth: 2, scale: 1.5, label: "1.5×" },
+	{ depth: 9, scale: 1.65, label: "1.65×" },
+	{ depth: 3, scale: 1.8, label: "1.8×" },
+	{ depth: 10, scale: 2, label: "2.0×" },
+	{ depth: 4, scale: 2.2, label: "2.2×" },
+	{ depth: 11, scale: 3, label: "3.0×" },
+	{ depth: 5, scale: 3.5, label: "3.5×" },
+	{ depth: 12, scale: 4, label: "4.0×" },
+	{ depth: 6, scale: 5, label: "5×" },
+];
+
+export const ZOOM_DEPTH_SCALES = Object.fromEntries(
+	ZOOM_DEPTH_OPTIONS.map(({ depth, scale }) => [depth, scale]),
+) as Record<ZoomDepth, number>;
 
 export const DEFAULT_ZOOM_DEPTH: ZoomDepth = 2;
 export const DEFAULT_AUTO_ZOOM_DEPTH: ZoomDepth = DEFAULT_ZOOM_DEPTH;

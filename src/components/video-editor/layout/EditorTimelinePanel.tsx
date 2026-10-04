@@ -70,14 +70,17 @@ export function EditorTimelinePanel(props: Props) {
 		zooms: timeline.zoomRegions,
 		leftSound: appearance.leftClickSound,
 		rightSound: appearance.rightClickSound,
+		typingTelemetry: timeline.cursorTelemetry,
+		typingSound: appearance.typingSound,
+		typingVolume: appearance.typingSoundVolume,
 		connectZooms: appearance.connectZooms,
 		zoomInDurationMs: appearance.zoomInDurationMs,
 		volumes: timeline.effectAudioVolumes,
 		startOverrides: timeline.effectAudioStartOverrides,
 		disabledIds: timeline.disabledEffectAudioIds,
 		firstTrackIndex: firstEffectTrackIndex,
-	}), [normalizedCursorTelemetry, timeline.clipRegions, timeline.zoomRegions, timeline.effectAudioVolumes, timeline.effectAudioStartOverrides, timeline.disabledEffectAudioIds,
-		appearance.leftClickSound, appearance.rightClickSound, appearance.connectZooms,
+	}), [normalizedCursorTelemetry, timeline.cursorTelemetry, timeline.clipRegions, timeline.zoomRegions, timeline.effectAudioVolumes, timeline.effectAudioStartOverrides, timeline.disabledEffectAudioIds,
+		appearance.leftClickSound, appearance.rightClickSound, appearance.typingSound, appearance.typingSoundVolume, appearance.connectZooms,
 		appearance.zoomInDurationMs, firstEffectTrackIndex]);
 	const selectTrackItem = (kind: "zoom" | "clip" | "audio", id: string | null, additive = false) => {
 		const current = timeline.selectedTrackItems?.kind === kind ? timeline.selectedTrackItems.ids : [];

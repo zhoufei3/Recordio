@@ -9,6 +9,7 @@ import {
 	type ProjectEditorState,
 	stripPersistedDevMotionBlurSettings,
 } from "./projectPersistence";
+import { normalizeTypingSoundId } from "./typingSounds";
 
 type PersistedEditorControls = Pick<
 	ProjectEditorState,
@@ -54,6 +55,8 @@ type PersistedEditorControls = Pick<
 	| "rightClickEffect"
 	| "leftClickSound"
 	| "rightClickSound"
+	| "typingSound"
+	| "typingSoundVolume"
 	| "cursorClickBounce"
 	| "cursorClickBounceDuration"
 	| "cursorSway"
@@ -156,6 +159,8 @@ export const DEFAULT_EDITOR_PREFERENCES: EditorPreferences = {
 	rightClickEffect: DEFAULT_EDITOR_CONTROLS.rightClickEffect,
 	leftClickSound: DEFAULT_EDITOR_CONTROLS.leftClickSound,
 	rightClickSound: DEFAULT_EDITOR_CONTROLS.rightClickSound,
+	typingSound: "none",
+	typingSoundVolume: 0.35,
 	cursorClickBounce: DEFAULT_EDITOR_CONTROLS.cursorClickBounce,
 	cursorClickBounceDuration: DEFAULT_EDITOR_CONTROLS.cursorClickBounceDuration,
 	cursorSway: DEFAULT_EDITOR_CONTROLS.cursorSway,
@@ -379,6 +384,8 @@ function normalizeEditorControls(
 		rightClickEffect: sanitizedRaw.rightClickEffect ?? fallback.rightClickEffect,
 		leftClickSound: sanitizedRaw.leftClickSound ?? fallback.leftClickSound,
 		rightClickSound: sanitizedRaw.rightClickSound ?? fallback.rightClickSound,
+		typingSound: normalizeTypingSoundId(sanitizedRaw.typingSound ?? fallback.typingSound),
+		typingSoundVolume: sanitizedRaw.typingSoundVolume ?? fallback.typingSoundVolume,
 		cursorClickBounce: sanitizedRaw.cursorClickBounce ?? fallback.cursorClickBounce,
 		cursorClickBounceDuration:
 			sanitizedRaw.cursorClickBounceDuration ?? fallback.cursorClickBounceDuration,
@@ -454,6 +461,8 @@ function normalizeEditorControls(
 		rightClickEffect: normalized.rightClickEffect,
 		leftClickSound: normalized.leftClickSound,
 		rightClickSound: normalized.rightClickSound,
+		typingSound: normalized.typingSound,
+		typingSoundVolume: normalized.typingSoundVolume,
 		cursorClickBounce: normalized.cursorClickBounce,
 		cursorClickBounceDuration: normalized.cursorClickBounceDuration,
 		cursorSway: normalized.cursorSway,

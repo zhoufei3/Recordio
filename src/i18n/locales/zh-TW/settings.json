@@ -152,7 +152,19 @@
 		"paddingLeft": "左",
 		"paddingRight": "右",
 		"removeBackground": "移除背景",
-		"linkPaddingSides": "Link padding sides"
+		"linkPaddingSides": "Link padding sides",
+		"typingSounds": {
+			"title": "鍵盤打字音效",
+			"description": "根據記錄的敲擊時長自動裁切音效。僅新錄製的演示專案支援，不儲存輸入文字。",
+			"single": "單次打字音效",
+			"thinFilm": "薄膜鍵盤音色",
+			"mechanicalCalm": "機械鍵盤（沉穩）",
+			"mechanicalMahjong": "機械鍵盤（麻將）",
+			"mechanicalBright": "機械鍵盤（明亮）",
+			"apple": "蘋果鍵盤音色",
+			"standard": "普通鍵盤音色",
+			"volume": "音量"
+		}
 	},
 	"sections": {
 		"scene": "場景",
@@ -294,5 +306,9 @@
 		"hintSplitClip": "Press C to split clip",
 		"hintAnnotation": "Press A to add annotation",
 		"hintAudio": "Click music icon to add audio"
+	},
+	"dashboard": {
+		"captureTyping": "記錄打字節奏",
+		"captureTypingDescription": "僅演示錄製生效。儲存敲擊時間，不儲存輸入文字，可在編輯器中開啟打字音效。"
 	}
 }

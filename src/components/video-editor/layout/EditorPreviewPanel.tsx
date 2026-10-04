@@ -42,6 +42,7 @@ import type { useTimelineState } from "../state/useTimelineState";
 import type { TimelineEditorHandle } from "../timeline/TimelineEditor";
 import type { VideoPlaybackRef } from "../VideoPlayback";
 import { EditorVideoPreview } from "./EditorVideoPreview";
+import { BuiltInSoundPicker } from "./BuiltInSoundPicker";
 
 type Props = {
 	t: ReturnType<typeof useI18n>["t"];
@@ -93,6 +94,8 @@ function formatTime(seconds: number) {
 export function EditorPreviewPanel(props: Props) {
 	const [isFullscreen, setIsFullscreen] = useState(false);
 	const [timelineZoom, setTimelineZoom] = useState(1);
+	const [soundPickerOpen, setSoundPickerOpen] = useState(false);
+	const addLayerTriggerRef = useRef<HTMLButtonElement>(null);
 	useEffect(() => {
 		const update = (event: Event) => setTimelineZoom((event as CustomEvent<number>).detail);
 		window.addEventListener("recordio:timeline-zoom", update);
@@ -295,7 +298,7 @@ export function EditorPreviewPanel(props: Props) {
 				<div className="editor-playback-tools z-10 flex min-w-0 items-center gap-2">
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
-							<Button variant="ghost" size="sm" className="h-9 gap-2 px-3">
+							<Button ref={addLayerTriggerRef} variant="ghost" size="sm" className="h-9 gap-2 px-3">
 								<Plus className="h-3.5 w-3.5" />
 								<span className="font-medium">{t("editor.toolbar.addLayer")}</span>
 								<CaretDown className="h-3 w-3" />
@@ -334,8 +337,24 @@ export function EditorPreviewPanel(props: Props) {
 							>
 								{t("timeline.audio.label")}
 							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => setSoundPickerOpen(true)}
+								className="cursor-pointer text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
+							>
+								{t("timeline.soundPicker.button", "音效")}
+							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
+					<BuiltInSoundPicker
+						t={t}
+						open={soundPickerOpen}
+						onOpenChange={setSoundPickerOpen}
+						triggerRef={addLayerTriggerRef}
+						hideTrigger
+						onAdd={async (path, label) => {
+							await timelineRef.current?.addBuiltinAudio(path, label);
+						}}
+					/>
 					<Button
 						onClick={() => timelineRef.current?.addZoom()}
 						variant="ghost"

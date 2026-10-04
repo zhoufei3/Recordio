@@ -31,6 +31,9 @@ interface TimelineWrapperProps {
 	onDraggingChange?: (dragging: boolean) => void;
 }
 
+// Wheel input is owned by useTimelineRange; the default strategy would zoom twice.
+const useExternalWheelStrategy = () => {};
+
 export default function TimelineWrapper({
 	children,
 	range,
@@ -258,6 +261,7 @@ export default function TimelineWrapper({
 
 	return (
 		<TimelineContext
+			usePanStrategy={useExternalWheelStrategy}
 			sensors={sensors}
 			range={range}
 			onRangeChanged={handleRangeChange}

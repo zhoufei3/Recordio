@@ -2,6 +2,7 @@ import { WAVEFORM_DEFAULT_PEAK_COUNT } from "../../timeline/core/constants";
 import type { AudioPeaksData } from "../../timeline/core/timelineTypes";
 import { getAudioResourceCacheScope, getAudioResourceVersionKey } from "../audioResourceVersion";
 import WorkerConstructor from "./waveform.worker?worker";
+import { getLocalFilePath } from "@/lib/exporter/localMediaSource";
 import { VersionedWaveformCache } from "./waveformCache";
 
 const MAX_WAVEFORM_PEAKS = 200_000;
@@ -88,6 +89,18 @@ export class WaveformGenerator {
 		if (inflight) return inflight;
 
 		const request = (async () => {
+			const localPath = getLocalFilePath(url);
+			// Packaged sound assets inside ASAR are small and only Chromium can read them directly.
+			if (localPath && !/\.asar[\\/]/i.test(localPath) && window.electronAPI?.generateAudioWaveform) {
+				const native = await window.electronAPI.generateAudioWaveform(localPath, peakCount, resourceVersion);
+				if (!native.success || !native.peaks || !native.durationMs) {
+					throw new Error(native.error || "Unable to generate audio waveform");
+				}
+				const result = { peaks: native.peaks, durationMs: native.durationMs };
+				this.peaksCache.setIfCurrent(cacheScope, cacheKey, result);
+				this.pending.delete(cacheKey);
+				return result;
+			}
 			const response = await fetch(url);
 			if (!response.ok) {
 				throw new Error(`Failed to load media: ${response.status}`);

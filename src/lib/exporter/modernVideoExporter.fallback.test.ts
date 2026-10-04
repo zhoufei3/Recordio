@@ -80,6 +80,99 @@ describe("ModernVideoExporter native fallback routing", () => {
 		vi.unstubAllGlobals();
 	});
 
+	it("uses native hardware encoding when browser hardware H.264 is unavailable, preserving output settings", async () => {
+		const start = vi.fn(async () => ({
+			success: true,
+			sessionId: "amf-session",
+			encoderName: "h264_amf",
+		}));
+		vi.stubGlobal("window", { electronAPI: { nativeVideoExportStart: start } });
+		vi.stubGlobal("VideoEncoder", {
+			isConfigSupported: vi.fn(async () => ({ supported: false })),
+		});
+		const exporter = new ModernVideoExporter({
+			width: 3840,
+			height: 2160,
+			frameRate: 60,
+			bitrate: 60_000_000,
+			encodingMode: "high-bitrate",
+		} as never) as unknown as {
+			tryStartNativeVideoExport: () => Promise<boolean>;
+			nativeRawFrameMode: boolean;
+			encoderName: string;
+		};
+		expect(await exporter.tryStartNativeVideoExport()).toBe(true);
+		expect(start).toHaveBeenCalledWith({
+			width: 3840,
+			height: 2160,
+			frameRate: 60,
+			bitrate: 60_000_000,
+			encodingMode: "high-bitrate",
+			inputMode: "rawvideo",
+			forceSoftwareEncoder: false,
+			requireHardwareEncoder: true,
+			flipVertical: false,
+		});
+		expect(exporter.nativeRawFrameMode).toBe(true);
+		expect(exporter.encoderName).toBe("h264_amf");
+	});
+
+	it("retains WebCodecs fallback when native hardware is unavailable", async () => {
+		vi.stubGlobal("window", {
+			electronAPI: {
+				nativeVideoExportStart: vi.fn(async () => ({
+					success: false,
+					error: "No hardware encoder",
+				})),
+			},
+		});
+		vi.stubGlobal("VideoEncoder", {
+			isConfigSupported: vi.fn(async () => ({ supported: false })),
+		});
+		const exporter = new ModernVideoExporter({
+			width: 1920,
+			height: 1080,
+		} as never) as unknown as {
+			tryStartNativeVideoExport: () => Promise<boolean>;
+			nativeRawFrameMode: boolean;
+		};
+		expect(await exporter.tryStartNativeVideoExport()).toBe(false);
+		expect(exporter.nativeRawFrameMode).toBe(false);
+	});
+
+	it("pipelines native raw frames with bounded writes and propagates write failures", async () => {
+		let finishWrite!: (result: { success: boolean; error?: string }) => void;
+		const pending = new Promise<{ success: boolean; error?: string }>((resolve) => {
+			finishWrite = resolve;
+		});
+		const write = vi.fn(() => pending);
+		vi.stubGlobal("window", { electronAPI: { nativeVideoExportWriteFrame: write } });
+		const capture = vi.fn(() => new Uint8ClampedArray(16));
+		const exporter = new ModernVideoExporter({ width: 2, height: 2 } as never) as unknown as {
+			nativeRawFrameMode: boolean;
+			nativeExportSessionId: string;
+			maxNativeWriteInFlight: number;
+			renderer: unknown;
+			encodeRenderedFrameNative: (
+				timestamp: number,
+				duration: number,
+				index: number,
+			) => Promise<void>;
+			awaitPendingNativeWrites: () => Promise<void>;
+		};
+		exporter.nativeRawFrameMode = true;
+		exporter.nativeExportSessionId = "amf-session";
+		exporter.maxNativeWriteInFlight = 2;
+		exporter.renderer = { capturePixelsForNativeExport: capture };
+		await exporter.encodeRenderedFrameNative(0, 33333, 0);
+		await exporter.encodeRenderedFrameNative(33333, 33333, 1);
+		const thirdFrame = exporter.encodeRenderedFrameNative(66666, 33333, 2);
+		expect(capture).toHaveBeenCalledTimes(2);
+		finishWrite({ success: false, error: "Encoder disconnected" });
+		await expect(thirdFrame).rejects.toThrow("Encoder disconnected");
+		await expect(exporter.awaitPendingNativeWrites()).rejects.toThrow("Encoder disconnected");
+	});
+
 	it("removes failed native writes without creating an unhandled rejection", async () => {
 		const exporter = new ModernVideoExporter({} as never) as unknown as {
 			trackNativeWritePromise: (write: Promise<void>) => void;

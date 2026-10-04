@@ -1,3 +1,4 @@
+import { normalizeTypingSoundId, type TypingSoundId } from "./typingSounds";
 import { getLocalMediaServerPath } from "@/lib/localMediaUrl";
 import type { SourceAudioTrackSettings } from "@/components/video-editor/audio/audioTypes";
 import type {
@@ -52,6 +53,7 @@ import {
 	DEFAULT_CURSOR_TRAIL_COLOR,
 	DEFAULT_CURSOR_TRAIL_DURATION_MS,
 	DEFAULT_CURSOR_TRAIL_ENABLED,
+	ZOOM_DEPTH_OPTIONS,
 	DEFAULT_CURSOR_TRAIL_LENGTH,
 	DEFAULT_CURSOR_TRAIL_SIZE,
 	DEFAULT_CURSOR_STYLE,
@@ -133,6 +135,8 @@ export interface ProjectEditorState {
 	rightClickEffect: CursorClickEffectSettings;
 	leftClickSound: ClickSoundId;
 	rightClickSound: ClickSoundId;
+	typingSound?: TypingSoundId;
+	typingSoundVolume?: number;
 	cursorSize: number;
 	cursorSmoothing: number;
 	cursorSpringStiffnessMultiplier: number;
@@ -457,7 +461,7 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 						id: region.id,
 						startMs,
 						endMs,
-						depth: [1, 2, 3, 4, 5, 6].includes(region.depth)
+						depth: ZOOM_DEPTH_OPTIONS.some((option) => option.depth === region.depth)
 							? region.depth
 							: DEFAULT_ZOOM_DEPTH,
 						focus: {
@@ -957,6 +961,8 @@ export function normalizeProjectEditor(editor: Partial<ProjectEditorState>): Pro
 		rightClickEffect: normalizeRightClickEffect((editor as Partial<ProjectEditorState>).rightClickEffect),
 		leftClickSound: normalizeClickSoundId(editor.leftClickSound),
 		rightClickSound: normalizeClickSoundId(editor.rightClickSound),
+		typingSound: normalizeTypingSoundId(editor.typingSound),
+		typingSoundVolume: typeof editor.typingSoundVolume === "number" && Number.isFinite(editor.typingSoundVolume) ? Math.max(0, Math.min(1, editor.typingSoundVolume)) : 0.35,
 		cursorSize: normalizedMotionPreset.cursorSize,
 		cursorSmoothing: normalizedMotionPreset.cursorSmoothing,
 		cursorSpringStiffnessMultiplier: normalizedMotionPreset.cursorSpringStiffnessMultiplier,

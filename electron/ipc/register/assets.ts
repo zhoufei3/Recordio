@@ -7,8 +7,26 @@ import { app, ipcMain } from "electron";
 import { USER_DATA_PATH } from "../../appPaths";
 import { getAssetRootPath } from "../project/manager";
 import { normalizePath } from "../utils";
+import { generateLocalWaveform } from "../ffmpeg/waveform";
 
 export function registerAssetHandlers() {
+	ipcMain.handle("generate-audio-waveform", async (event, filePath: string, peakCount: number, resourceVersion: number) => {
+		const controller = new AbortController();
+		const abort = () => controller.abort();
+		event.sender.once("destroyed", abort);
+		try {
+			if (typeof filePath !== "string" || !path.isAbsolute(filePath) ||
+				!Number.isInteger(peakCount) || peakCount < 1 || peakCount > 200_000 ||
+				!Number.isFinite(resourceVersion)) throw new Error("Invalid waveform request");
+			if (event.sender.isDestroyed()) controller.abort();
+			const waveform = await generateLocalWaveform(filePath, peakCount, resourceVersion, controller.signal);
+			return { success: true, ...waveform };
+		} catch (error) {
+			return { success: false, error: String(error) };
+		} finally {
+			event.sender.removeListener("destroyed", abort);
+		}
+	});
 	async function resolveReadableLocalFilePath(filePath: string) {
 		const normalizedPath = normalizePath(filePath);
 		const resolvedPath = await fs.realpath(normalizedPath).catch(() => normalizedPath);
@@ -145,6 +163,16 @@ export function registerAssetHandlers() {
 			return { success: true, data };
 		} catch (error) {
 			console.error("Failed to read local file:", error);
+			return { success: false, error: String(error) };
+		}
+	});
+
+	ipcMain.handle("get-local-file-fingerprint", async (_, filePath: string) => {
+		try {
+			const resolved = await resolveReadableLocalFilePath(filePath);
+			const stats = await fs.stat(resolved);
+			return { success: true, path: resolved, size: stats.size, modifiedAt: stats.mtimeMs };
+		} catch (error) {
 			return { success: false, error: String(error) };
 		}
 	});

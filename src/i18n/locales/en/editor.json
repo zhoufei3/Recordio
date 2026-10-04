@@ -234,7 +234,13 @@
 		"expand": "Expand Timeline",
 		"collapse": "Collapse Timeline",
 		"emptyVideo": "No Video Loaded",
-		"dropVideo": "Drag and drop a video to start editing"
+		"dropVideo": "Drag and drop a video to start editing",
+		"soundPicker": {
+			"title": "Built-in sounds",
+			"button": "Sound",
+			"categories": { "click": "Mouse clicks", "transition": "Transitions", "typing": "Keyboard typing" },
+			"adding": "Adding…"
+		}
 	},
 	"openRecordingsFolder": "Open recordings folder",
 	"dashboard": {

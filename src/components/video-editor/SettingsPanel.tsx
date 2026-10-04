@@ -1,3 +1,4 @@
+import type { TypingSoundId } from "./typingSounds";
 import { SettingsSections, SettingsCategory } from "./SettingsSections";
 import { Card, RadioGroup, Radio, Label, Description } from "@heroui/react";
 import { ProgressBar } from "@heroui/react";
@@ -15,6 +16,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { ChoiceGroup, ChoiceItem } from "@/components/ui/choice-group";
 import { useTheme, type ThemePreference } from "@/contexts/ThemeContext";
@@ -114,6 +116,7 @@ import {
 	DEFAULT_WEBCAM_SIZE,
 	DEFAULT_ZOOM_IN_DURATION_MS,
 	DEFAULT_ZOOM_OUT_DURATION_MS,
+	ZOOM_DEPTH_OPTIONS,
 } from "./types";
 import { fromCursorSwaySliderValue, toCursorSwaySliderValue } from "./videoPlayback/cursorSway";
 import { builtinCursorPackSources } from "./videoPlayback/builtinCursorPacks";
@@ -498,7 +501,7 @@ interface SettingsPanelProps {
 	onClipDelete?: (id: string) => void;
 	selectedAudioId?: string | null;
 	selectedAudioVolume?: number | null;
-	selectedAudioEffectKind?: "click" | "zoom" | null;
+	selectedAudioEffectKind?: "click" | "zoom" | "typing" | null;
 	selectedAudioNormalize?: boolean | null;
 	onAudioVolumeChange?: (volume: number) => void;
 	onAudioNormalizeChange?: (normalize: boolean) => void;
@@ -566,6 +569,10 @@ interface SettingsPanelProps {
 	leftClickSound?: ClickSoundId;
 	onLeftClickSoundChange?: (sound: ClickSoundId) => void;
 	rightClickSound?: ClickSoundId;
+	typingSound?: TypingSoundId;
+	onTypingSoundChange?: (sound: TypingSoundId) => void;
+	typingSoundVolume?: number;
+	onTypingSoundVolumeChange?: (volume: number) => void;
 	onRightClickSoundChange?: (sound: ClickSoundId) => void;
 	defaultZoomSoundId?: ZoomSoundId;
 	defaultZoomPanSoundId?: ZoomSoundId;
@@ -644,15 +651,6 @@ interface SettingsPanelProps {
 	nativeCaptureUnavailableSession?: boolean;
 	onOpenNativeCaptureUnavailableModal?: () => void;
 }
-
-const ZOOM_DEPTH_OPTIONS: Array<{ depth: ZoomDepth; label: string }> = [
-	{ depth: 1, label: "1.25×" },
-	{ depth: 2, label: "1.5×" },
-	{ depth: 3, label: "1.8×" },
-	{ depth: 4, label: "2.2×" },
-	{ depth: 5, label: "3.5×" },
-	{ depth: 6, label: "5×" },
-];
 
 const WEBCAM_POSITION_PRESETS: Array<{
 	preset: Exclude<WebcamPositionPreset, "custom">;
@@ -1048,6 +1046,10 @@ export function SettingsPanel({
 	leftClickSound = "none",
 	onLeftClickSoundChange,
 	rightClickSound = "none",
+	typingSound = "none",
+	onTypingSoundChange,
+	typingSoundVolume = 0.35,
+	onTypingSoundVolumeChange,
 	defaultZoomSoundId = "none",
 	defaultZoomPanSoundId = "none",
 	defaultZoomOutSoundId = "none",
@@ -2998,7 +3000,9 @@ export function SettingsPanel({
 			<section className="flex flex-col gap-3">
 				{selectedTrackItemCount > 1 && <p className="text-xs text-muted">{tSettings("multiSelectHint", "Selected {{count}} items. Changes apply to all selected items.", { count: selectedTrackItemCount })}</p>}
 				<div className="flex items-center justify-between gap-3">
-					<SectionLabel>{selectedAudioEffectKind === "click"
+					<SectionLabel>{selectedAudioEffectKind === "typing"
+						? tSettings("effects.typingSounds.title", "Typing sound")
+						: selectedAudioEffectKind === "click"
 						? tSettings("audio.clickEffectTitle", "Mouse click sound")
 						: selectedAudioEffectKind === "zoom"
 							? tSettings("audio.zoomEffectTitle", "Zoom sound")
@@ -3009,7 +3013,7 @@ export function SettingsPanel({
 						variant="ghost"
 						type="button"
 						onClick={() => {
-							onAudioVolumeChange?.(selectedAudioEffectKind === "click" ? 0.55 : selectedAudioEffectKind === "zoom" ? 0.4 : 1);
+							onAudioVolumeChange?.(selectedAudioEffectKind === "typing" ? typingSoundVolume : selectedAudioEffectKind === "click" ? 0.55 : selectedAudioEffectKind === "zoom" ? 0.4 : 1);
 							if (!selectedAudioEffectKind) onAudioNormalizeChange?.(false);
 						}}
 					>
@@ -3135,6 +3139,8 @@ export function SettingsPanel({
 						<div className="flex justify-end">
 							<Button type="button" variant="ghost" size="sm" className="text-xs text-muted" onClick={() => {
 								onLeftClickSoundChange?.("none");
+								onTypingSoundChange?.("none");
+								onTypingSoundVolumeChange?.(0.35);
 								onRightClickSoundChange?.("none");
 								onDefaultZoomSoundChange?.("none");
 								onDefaultZoomPanSoundChange?.("none");
@@ -3208,6 +3214,29 @@ export function SettingsPanel({
 									{getAvailableClickSounds().map((sound, index) => <SelectItem key={sound.id} value={sound.id} endAction={deleteActionForSound("click", sound.id)}>{("label" in sound) ? sound.label : tSettings(`effects.clickSounds.sound${index + 1}`, `Sound ${index + 1}`)}</SelectItem>)}
 								</SelectContent>
 							</Select>
+						</div>
+						<div className="rounded-2xl border border-border p-3 space-y-3">
+							<div className="flex items-center justify-between gap-3">
+								<span className="text-sm">{tSettings("effects.typingSounds.title", "Typing sound")}</span>
+								<Switch checked={typingSound !== "none"} onCheckedChange={(enabled) => onTypingSoundChange?.(enabled ? "mechanical-mahjong" : "none")} aria-label={tSettings("effects.typingSounds.title", "Typing sound")} />
+							</div>
+							<p className="text-xs text-muted">{tSettings("effects.typingSounds.description", "Uses recorded keystroke timing. New presentation recordings only; typed text is not saved.")}</p>
+							{typingSound !== "none" && <>
+								<Select value={typingSound} onValueChange={(value) => onTypingSoundChange?.(value as TypingSoundId)}>
+									<SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+									<SelectContent>
+										<SelectItem value="single">{tSettings("effects.typingSounds.single", "Single keystroke")}</SelectItem>
+										<SelectItem value="thin-film">{tSettings("effects.typingSounds.thinFilm", "Membrane keyboard")}</SelectItem>
+										<SelectItem value="mechanical-calm">{tSettings("effects.typingSounds.mechanicalCalm", "Mechanical keyboard (calm)")}</SelectItem>
+										<SelectItem value="mechanical-mahjong">{tSettings("effects.typingSounds.mechanicalMahjong", "Mechanical keyboard (mahjong)")}</SelectItem>
+										<SelectItem value="mechanical-bright">{tSettings("effects.typingSounds.mechanicalBright", "Mechanical keyboard (bright)")}</SelectItem>
+										<SelectItem value="apple">{tSettings("effects.typingSounds.apple", "Apple keyboard")}</SelectItem>
+										<SelectItem value="standard">{tSettings("effects.typingSounds.standard", "Standard keyboard")}</SelectItem>
+									</SelectContent>
+								</Select>
+								<div className="flex justify-between text-xs"><span>{tSettings("effects.typingSounds.volume", "Volume")}</span><span>{Math.round(typingSoundVolume * 100)}%</span></div>
+								<Slider min={0} max={100} step={1} value={[typingSoundVolume * 100]} onValueChange={([value]) => onTypingSoundVolumeChange?.(value / 100)} aria-label={tSettings("effects.typingSounds.volume", "Volume")} />
+							</>}
 						</div>
 						{deletedClickSoundCount > 0 ? (
 							<Button type="button" variant="outline" className="h-9 w-full text-sm" onClick={onRestoreDeletedClickSounds}>

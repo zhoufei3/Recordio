@@ -366,9 +366,19 @@ interface Window {
 		readLocalFile: (
 			filePath: string,
 		) => Promise<{ success: boolean; data?: Uint8Array; error?: string }>;
+		getLocalFileFingerprint: (filePath: string) => Promise<{
+			success: boolean;
+			path?: string;
+			size?: number;
+			modifiedAt?: number;
+			error?: string;
+		}>;
 		generateWallpaperThumbnail: (
 			filePath: string,
 		) => Promise<{ success: boolean; data?: Uint8Array; error?: string }>;
+		generateAudioWaveform: (
+			filePath: string, peakCount: number, resourceVersion: number,
+		) => Promise<{ success: boolean; peaks?: Float32Array; durationMs?: number; error?: string }>;
 		probeNativeVideoMetadata: (filePath: string) => Promise<{
 			success: boolean;
 			metadata?: RendererNativeVideoMetadataProbe;
@@ -479,6 +489,7 @@ interface Window {
 			encodingMode: "fast" | "balanced" | "quality" | "high-bitrate";
 			inputMode?: "rawvideo" | "h264-stream";
 			forceSoftwareEncoder?: boolean;
+			requireHardwareEncoder?: boolean;
 			flipVertical?: boolean;
 		}) => Promise<{
 			success: boolean;
@@ -608,7 +619,7 @@ interface Window {
 			startDelayMsByPath?: Record<string, number>;
 			error?: string;
 		}>;
-		setRecordingState: (recording: boolean, captureCursorTelemetry?: boolean) => Promise<void>;
+		setRecordingState: (recording: boolean, captureCursorTelemetry?: boolean, captureTyping?: boolean) => Promise<void>;
 		getCursorTelemetry: (videoPath?: string) => Promise<{
 			success: boolean;
 			samples: CursorTelemetryPoint[];
@@ -1077,6 +1088,7 @@ interface ProcessedDesktopSource {
 }
 
 interface CursorTelemetryPoint {
+	typing?: boolean;
 	timeMs: number;
 	cx: number;
 	cy: number;

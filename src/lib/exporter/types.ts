@@ -127,6 +127,9 @@ export interface ExportMetrics {
 	peakNativeWriteInFlight?: number;
 	nativeCaptureMs?: number;
 	nativeWriteMs?: number;
+	/** Synchronous frame submission cost; excludes the asynchronous encoder acknowledgement. */
+	nativeSubmitMs?: number;
+	nativeBackpressureMs?: number;
 	finalizationMs?: number;
 	frameCount?: number;
 	renderBackend?: ExportRenderBackend;

@@ -80,6 +80,8 @@ export function useVideoEditorPresets({
 			rightClickEffect: appearance.rightClickEffect,
 			leftClickSound: appearance.leftClickSound,
 			rightClickSound: appearance.rightClickSound,
+			typingSound: appearance.typingSound,
+			typingSoundVolume: appearance.typingSoundVolume,
 			cursorClickBounce: appearance.cursorClickBounce,
 			cursorClickBounceDuration: appearance.cursorClickBounceDuration,
 			cursorSway: appearance.cursorSway,
@@ -159,6 +161,8 @@ export function useVideoEditorPresets({
 			appearance.setRightClickEffect(snapshot.rightClickEffect);
 			appearance.setLeftClickSound(snapshot.leftClickSound);
 			appearance.setRightClickSound(snapshot.rightClickSound);
+		appearance.setTypingSound(snapshot.typingSound ?? "none");
+		appearance.setTypingSoundVolume(snapshot.typingSoundVolume ?? 0.35);
 			appearance.setCursorClickBounce(snapshot.cursorClickBounce);
 			appearance.setCursorClickBounceDuration(snapshot.cursorClickBounceDuration);
 			appearance.setCursorSway(snapshot.cursorSway);

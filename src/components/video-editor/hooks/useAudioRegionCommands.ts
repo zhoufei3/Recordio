@@ -63,13 +63,14 @@ export function useAudioRegionCommands({
 	);
 
 	const handleAudioAdded = useCallback(
-		(span: Span, audioPath: string, trackIndex?: number) => {
+		(span: Span, audioPath: string, trackIndex?: number, label?: string) => {
 			const id = `audio-${nextAudioIdRef.current++}`;
 			const newRegion: AudioRegion = {
 				id,
 				startMs: Math.round(span.start),
 				endMs: Math.round(span.end),
 				audioPath,
+				label,
 				volume: 1,
 				normalize: false,
 				trackIndex,

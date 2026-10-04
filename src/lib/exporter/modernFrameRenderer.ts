@@ -1,4 +1,13 @@
-import { Application, BlurFilter, Container, Graphics, Rectangle, Sprite, Texture } from "pixi.js";
+import {
+	Application,
+	BlurFilter,
+	Container,
+	Graphics,
+	Rectangle,
+	RenderTexture,
+	Sprite,
+	Texture,
+} from "pixi.js";
 import { MotionBlurFilter } from "pixi-filters/motion-blur";
 import { ZoomBlurFilter } from "pixi-filters/zoom-blur";
 import { buildActiveCaptionLayout } from "@/components/video-editor/captionLayout";
@@ -113,6 +122,7 @@ interface FrameRenderConfig {
 	width: number;
 	height: number;
 	preferredRenderBackend?: ExportRenderBackend;
+	nativeFrameCapture?: boolean;
 	wallpaper: string;
 	zoomRegions: ZoomRegion[];
 	showShadow: boolean;
@@ -407,6 +417,10 @@ export class FrameRenderer {
 	private zoomBlurFilter: ZoomBlurFilter | null = null;
 	private motionBlurFilter: MotionBlurFilter | null = null;
 	private backgroundBlurFilter: BlurFilter | null = null;
+	private nativeFrameTexture: RenderTexture | null = null;
+	private nativeFrameTextureReady = false;
+	private captionMeasureFont = "";
+	private captionTextWidths = new Map<string, number>();
 	private annotationAssets: AnnotationRenderAssets | null = null;
 	private annotationScaleFactor = 1;
 	private annotationSprites: AnnotationSpriteEntry[] = [];
@@ -1694,13 +1708,17 @@ export class FrameRenderer {
 			settings.maxWidth,
 		);
 		measureCtx.font = `${CAPTION_FONT_WEIGHT} ${fontSize}px ${fontFamily}`;
+		if (this.captionMeasureFont !== measureCtx.font) {
+			this.captionMeasureFont = measureCtx.font;
+			this.captionTextWidths.clear();
+		}
 
 		const layout = buildActiveCaptionLayout({
 			cues,
 			timeMs,
 			settings,
 			maxWidthPx: getCaptionTextMaxWidth(this.config.width, settings.maxWidth, fontSize),
-			measureText: (text) => measureCtx.measureText(text).width,
+			measureText: (text) => this.measureCaptionText(text),
 		});
 		if (!layout) {
 			return null;
@@ -1733,6 +1751,15 @@ export class FrameRenderer {
 			centerX,
 			centerY,
 		};
+	}
+
+	private measureCaptionText(text: string): number {
+		const cached = this.captionTextWidths.get(text);
+		if (cached !== undefined) return cached;
+		const width = this.captionMeasureCtx!.measureText(text).width;
+		// Bound the cache for long recordings; uncached words use the same font metrics.
+		if (this.captionTextWidths.size < 2048) this.captionTextWidths.set(text, width);
+		return width;
 	}
 
 	private ensureCaptionCanvas(width: number, height: number): void {
@@ -1807,7 +1834,7 @@ export class FrameRenderer {
 
 			line.words.forEach((word) => {
 				const segmentText = `${word.leadingSpace ? " " : ""}${word.text}`;
-				const segmentWidth = ctx.measureText(segmentText).width;
+				const segmentWidth = this.measureCaptionText(segmentText);
 				const visualState = getCaptionWordVisualState(
 					state.layout.hasWordTimings,
 					word.state,
@@ -2963,7 +2990,7 @@ export class FrameRenderer {
 			if (this.captionContainer) this.captionContainer.visible = false;
 			// Gap frames must bypass canvas annotation compositing as well as Pixi layers.
 			this.outputCanvasOverride = null;
-			this.app.render();
+			this.renderScene();
 			return;
 		}
 		if (this.captionContainer) this.captionContainer.visible = true;
@@ -3067,6 +3094,7 @@ export class FrameRenderer {
 			}
 
 			this.app!.render();
+			this.nativeFrameTextureReady = false;
 
 			if (this.annotationContainer) {
 				this.annotationContainer.visible = annotationContainerVisible;
@@ -3080,7 +3108,29 @@ export class FrameRenderer {
 		}
 
 		this.outputCanvasOverride = null;
-		this.app!.render();
+		this.renderScene();
+	}
+
+	private renderScene(): void {
+		this.nativeFrameTextureReady = false;
+		if (!this.config.nativeFrameCapture) {
+			this.app!.render();
+			return;
+		}
+		// Read this frame directly instead of rendering the entire stage again during extraction.
+		this.nativeFrameTexture ??= RenderTexture.create({
+			width: this.config.width,
+			height: this.config.height,
+			resolution: 1,
+			antialias: true,
+		});
+		this.app!.renderer.render({
+			container: this.app!.stage,
+			target: this.nativeFrameTexture,
+			clear: true,
+			clearColor: [0, 0, 0, 0],
+		});
+		this.nativeFrameTextureReady = true;
 	}
 
 	private updateLayout(): void {
@@ -3319,7 +3369,11 @@ export class FrameRenderer {
 				: null;
 		}
 
-		const result = this.app.renderer.extract.pixels(this.app.stage);
+		const result = this.app.renderer.extract.pixels(
+			this.nativeFrameTextureReady && this.nativeFrameTexture
+				? this.nativeFrameTexture
+				: this.app.stage,
+		);
 		const pixels = result.pixels;
 
 		return pixels instanceof Uint8ClampedArray ? pixels : new Uint8ClampedArray(pixels);
@@ -3360,6 +3414,11 @@ export class FrameRenderer {
 		this.zoomBlurFilter?.destroy();
 		this.motionBlurFilter?.destroy();
 		this.backgroundBlurFilter?.destroy();
+		this.nativeFrameTexture?.destroy(true);
+		this.nativeFrameTexture = null;
+		this.nativeFrameTextureReady = false;
+		this.captionTextWidths.clear();
+		this.captionMeasureFont = "";
 
 		destroyPixiApplication(this.app, "Lightning export renderer");
 

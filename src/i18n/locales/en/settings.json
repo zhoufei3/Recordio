@@ -271,7 +271,19 @@
 		"cursorDebugTuningHint": "Development-only spring tuning controls.",
 		"cursorSpringStiffnessMultiplier": "Spring stiffness",
 		"cursorSpringDampingMultiplier": "Spring damping",
-		"cursorSpringMassMultiplier": "Spring mass"
+		"cursorSpringMassMultiplier": "Spring mass",
+		"typingSounds": {
+			"title": "Typing sound",
+			"description": "Sound is trimmed to the recorded typing duration. New presentation recordings only; typed text is not saved.",
+			"single": "Single keystroke",
+			"thinFilm": "Membrane keyboard",
+			"mechanicalCalm": "Mechanical keyboard (calm)",
+			"mechanicalMahjong": "Mechanical keyboard (mahjong)",
+			"mechanicalBright": "Mechanical keyboard (bright)",
+			"apple": "Apple keyboard",
+			"standard": "Standard keyboard",
+			"volume": "Volume"
+		}
 	},
 	"sections": {
 		"cursorSound": "Sound",
@@ -436,7 +448,9 @@
 		"resetSettings": "Reset all settings",
 		"resetSettingsDescription": "Restore software settings to their defaults. Projects, recordings, and media files will be kept.",
 		"resetSettingsConfirm": "Reset all software settings to defaults? Your projects and recordings will not be deleted.",
-		"resetSettingsFailed": "Could not reset settings"
+		"resetSettingsFailed": "Could not reset settings",
+		"captureTyping": "Record typing rhythm",
+		"captureTypingDescription": "Presentation recordings only. Saves keystroke timing, not typed text, for optional typing sounds."
 	},
 	"about": {
 		"title": "About Recordio",

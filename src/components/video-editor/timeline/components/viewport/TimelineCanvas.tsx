@@ -4,6 +4,7 @@ import { useTimelineContext } from "dnd-timeline";
 import {
 	type MouseEvent,
 	type MouseEventHandler,
+	type PointerEvent,
 	memo,
 	useCallback,
 	useEffect,
@@ -32,6 +33,7 @@ import {
 	isAudioTrackRowId,
 } from "../../core/rows";
 import type { TimelineRenderItem } from "../../core/timelineTypes";
+import { getTimelineRangeSelection } from "../../core/rangeSelection";
 import { DEFAULT_CAPTION_DURATION_MS } from "../../hooks/actions/useTimelineCaptionActions";
 import { useTimelineAudioPeaks } from "../../hooks/useTimelineAudioPeaks";
 import Item from "../../Item";
@@ -952,6 +954,34 @@ export default function TimelineCanvas({
 		useTimelineContext();
 	const { clips: clipPresentation } = useTimelinePresentation();
 	const localTimelineRef = useRef<HTMLDivElement | null>(null);
+	const selectionAnchorRef = useRef<string | null>(null);
+	const handleItemSelectionCapture = (event: PointerEvent<HTMLDivElement>) => {
+		if (event.button !== 0) return;
+		const element = (event.target as HTMLElement).closest<HTMLElement>("[data-timeline-item-id]");
+		const id = element?.dataset.timelineItemId;
+		const kind = element?.dataset.variant;
+		if (!id || (kind !== "zoom" && kind !== "clip" && kind !== "audio")) {
+			selectionAnchorRef.current = null;
+			return;
+		}
+		const primary = kind === "clip" ? selectedClipId : kind === "zoom" ? selectedZoomId : selectedAudioId;
+		const selected = kind === "clip" ? selectedClipIds : kind === "zoom" ? selectedZoomIds : selectedAudioIds;
+		const anchor = selectionAnchorRef.current;
+		if (event.shiftKey && anchor && onSelectTrackItems && (primary === anchor || selected.includes(anchor))) {
+			const ids = getTimelineRangeSelection(
+				items.filter((item) => !liveHiddenItemIds?.includes(item.id)), anchor, id,
+			);
+			if (ids.length) {
+				const range = event.ctrlKey || event.metaKey ? [...new Set([...selected, ...(primary ? [primary] : []), ...ids])] : ids;
+				// Keep the clicked endpoint as the primary item, including reverse selections.
+				onSelectTrackItems(kind, [...range.filter((itemId) => itemId !== id), id]);
+				event.preventDefault();
+				event.stopPropagation();
+				return;
+			}
+		}
+		selectionAnchorRef.current = id;
+	};
 	const [isSeeking, setIsSeeking] = useState(false);
 	const [marquee, setMarquee] = useState<{ startX: number; startY: number; x: number; y: number } | null>(null);
 	const marqueeStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -1188,6 +1218,7 @@ export default function TimelineCanvas({
 	return (
 		<div
 			ref={setRefs}
+			data-timeline-viewport
 			style={{
 				...style,
 				height: "100%",
@@ -1195,6 +1226,7 @@ export default function TimelineCanvas({
 				overflow: "visible",
 			}}
 			className="select-none bg-editor-bg relative cursor-pointer group flex flex-col"
+			onPointerDownCapture={handleItemSelectionCapture}
 			onMouseDown={handleTimelineMouseDown}
 			onClick={handleTimelineClick}
 			onMouseEnter={handleTimelineMouseEnter}

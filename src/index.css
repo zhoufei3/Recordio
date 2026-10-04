@@ -259,6 +259,25 @@
 		scrollbar-width: thin;
 		scrollbar-color: var(--scrollbar-thumb) transparent;
 	}
+	.sound-picker-scrollbar {
+		scrollbar-width: thin;
+		scrollbar-color: var(--accent) var(--accent-soft);
+	}
+	.sound-picker-scrollbar::-webkit-scrollbar {
+		width: 8px;
+	}
+	.sound-picker-scrollbar::-webkit-scrollbar-track {
+		background: var(--accent-soft);
+		border-radius: 999px;
+	}
+	.sound-picker-scrollbar::-webkit-scrollbar-thumb {
+		background: var(--accent);
+		border: 2px solid var(--accent-soft);
+		border-radius: 999px;
+	}
+	.sound-picker-scrollbar::-webkit-scrollbar-thumb:hover {
+		background: var(--primary);
+	}
 }
 
 /* Responsive geometry belongs to the editor, leaving HeroUI control styles intact. */

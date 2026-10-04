@@ -963,7 +963,7 @@ export function createEditorWindow(): BrowserWindow {
 			titleBarStyle: "hiddenInset",
 			trafficLightPosition: { x: 16, y: 20 },
 		}),
-		autoHideMenuBar: !isMac,
+		autoHideMenuBar: false,
 		transparent: false,
 		resizable: true,
 		alwaysOnTop: false,
@@ -979,6 +979,9 @@ export function createEditorWindow(): BrowserWindow {
 			backgroundThrottling: false,
 		},
 	});
+	if (!isMac) {
+		win.setMenuBarVisibility(false);
+	}
 
 	recordingPreparationActive = false;
 	editorWindows.add(win);

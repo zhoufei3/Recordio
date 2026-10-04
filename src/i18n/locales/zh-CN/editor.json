@@ -234,7 +234,13 @@
 		"expand": "展开时间轴",
 		"collapse": "折叠时间轴",
 		"emptyVideo": "未加载视频",
-		"dropVideo": "拖放视频即可开始编辑"
+		"dropVideo": "拖放视频即可开始编辑",
+		"soundPicker": {
+			"title": "内置音效",
+			"button": "音效",
+			"categories": { "click": "鼠标点击音效", "transition": "转场音效", "typing": "键盘打字音效" },
+			"adding": "添加中…"
+		}
 	},
 	"openRecordingsFolder": "打开录制文件夹",
 	"dashboard": {

@@ -259,7 +259,19 @@
 		"cursorDebugTuningHint": "仅供开发调试的弹簧参数。",
 		"cursorSpringStiffnessMultiplier": "弹簧刚度",
 		"cursorSpringDampingMultiplier": "弹簧阻尼",
-		"cursorSpringMassMultiplier": "弹簧质量"
+		"cursorSpringMassMultiplier": "弹簧质量",
+		"typingSounds": {
+			"title": "键盘打字音效",
+			"description": "根据记录的敲击时长自动裁切音效。仅新录制的演示项目支持，不保存输入文字。",
+			"single": "单次打字音效",
+			"thinFilm": "薄膜键盘音色",
+			"mechanicalCalm": "机械键盘（沉稳）",
+			"mechanicalMahjong": "机械键盘（麻将）",
+			"mechanicalBright": "机械键盘（明亮）",
+			"apple": "苹果键盘音色",
+			"standard": "普通键盘音色",
+			"volume": "音量"
+		}
 	},
 	"sections": {
 		"cursorSound": "声音",
@@ -436,7 +448,9 @@
 		"resetSettings": "重置全部设置",
 		"resetSettingsDescription": "将软件设置恢复为默认值。项目、录制内容和媒体文件会保留。",
 		"resetSettingsConfirm": "确定要将软件的所有设置恢复为默认值吗？项目和录制内容不会被删除。",
-		"resetSettingsFailed": "无法重置设置"
+		"resetSettingsFailed": "无法重置设置",
+		"captureTyping": "记录打字节奏",
+		"captureTypingDescription": "仅演示录制生效。保存敲击时间，不保存输入文字，可在编辑器中开启打字音效。"
 	},
 	"about": {
 		"title": "关于 Recordio",

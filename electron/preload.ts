@@ -231,8 +231,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	readLocalFile: (filePath: string) => {
 		return ipcRenderer.invoke("read-local-file", filePath);
 	},
+	getLocalFileFingerprint: (filePath: string) => {
+		return ipcRenderer.invoke("get-local-file-fingerprint", filePath);
+	},
 	generateWallpaperThumbnail: (filePath: string) => {
 		return ipcRenderer.invoke("generate-wallpaper-thumbnail", filePath);
+	},
+	generateAudioWaveform: (filePath: string, peakCount: number, resourceVersion: number) => {
+		return ipcRenderer.invoke("generate-audio-waveform", filePath, peakCount, resourceVersion);
 	},
 	probeNativeVideoMetadata: (filePath: string) => {
 		return ipcRenderer.invoke("probe-native-video-metadata", filePath) as Promise<{
@@ -359,6 +365,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 		encodingMode: "fast" | "balanced" | "quality" | "high-bitrate";
 		inputMode?: "rawvideo" | "h264-stream";
 		forceSoftwareEncoder?: boolean;
+		requireHardwareEncoder?: boolean;
 		flipVertical?: boolean;
 	}) => {
 		return ipcRenderer.invoke("native-video-export-start", options);
@@ -638,8 +645,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	getRecordedVideoPath: () => {
 		return ipcRenderer.invoke("get-recorded-video-path");
 	},
-	setRecordingState: (recording: boolean, captureCursorTelemetry?: boolean) => {
-		return ipcRenderer.invoke("set-recording-state", recording, captureCursorTelemetry);
+	setRecordingState: (recording: boolean, captureCursorTelemetry?: boolean, captureTyping?: boolean) => {
+		return ipcRenderer.invoke("set-recording-state", recording, captureCursorTelemetry, captureTyping);
 	},
 	setCursorScale: (scale: number) => {
 		return ipcRenderer.invoke("set-cursor-scale", scale);

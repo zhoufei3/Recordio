@@ -369,6 +369,9 @@ export class ModernVideoExporter {
 	private peakNativeWriteInFlight = 0;
 	private nativeCaptureTimeMs = 0;
 	private nativeWriteTimeMs = 0;
+	private nativeSubmitTimeMs = 0;
+	private nativeBackpressureTimeMs = 0;
+	private lastStageSample = { render: 0, capture: 0, submit: 0, wait: 0, callback: 0 };
 	private finalizationTimeMs = 0;
 	private finalizationStageMs: ExportFinalizationStageMetrics = {};
 	private processedFrameCount = 0;
@@ -620,7 +623,8 @@ export class ModernVideoExporter {
 					timelineEffects: this.config.clipRegions !== undefined,
 					width: this.config.width,
 					height: this.config.height,
-					preferredRenderBackend: undefined,
+					preferredRenderBackend: this.nativeRawFrameMode ? "webgl" : undefined,
+					nativeFrameCapture: this.nativeRawFrameMode,
 					wallpaper: this.config.wallpaper,
 					zoomRegions: this.config.zoomRegions,
 					showShadow: this.config.showShadow,
@@ -924,7 +928,9 @@ export class ModernVideoExporter {
 					metrics: this.buildExportMetrics(),
 				};
 			} catch (error) {
-				const encoderFailure = this.encoderError ?? this.nativeEncoderError;
+				const encoderFailure =
+					this.encoderError ??
+					(this.nativeH264Encoder && !this.nativeWriteError ? this.nativeEncoderError : null);
 				if (
 					!rawFallbackAttempted &&
 					(encoderFailure ||
@@ -2794,6 +2800,13 @@ export class ModernVideoExporter {
 	}
 
 	private async tryStartNativeVideoExport(): Promise<boolean> {
+		if (await this.tryStartBrowserNativeVideoExport()) return true;
+		// Browser hardware encoding can be unavailable even when FFmpeg can use AMF/QSV/NVENC.
+		console.log("[VideoExporter] Trying a native hardware encoder for rendered RGBA frames.");
+		return this.tryStartRawVideoExport(false);
+	}
+
+	private async tryStartBrowserNativeVideoExport(): Promise<boolean> {
 		this.lastNativeExportError = null;
 
 		if (typeof window === "undefined" || !window.electronAPI?.nativeVideoExportStart) {
@@ -2916,9 +2929,9 @@ export class ModernVideoExporter {
 		return true;
 	}
 
-	private async tryStartRawVideoExport(): Promise<boolean> {
-		if (!window.electronAPI?.nativeVideoExportStart) {
-			this.lastNativeExportError = "FFmpeg software export is unavailable in this build";
+	private async tryStartRawVideoExport(forceSoftwareEncoder = true): Promise<boolean> {
+		if (typeof window === "undefined" || !window.electronAPI?.nativeVideoExportStart) {
+			this.lastNativeExportError = "Native raw-frame export is unavailable in this build";
 			return false;
 		}
 		const result = await window.electronAPI.nativeVideoExportStart({
@@ -2928,11 +2941,12 @@ export class ModernVideoExporter {
 			bitrate: this.config.bitrate,
 			encodingMode: this.config.encodingMode ?? "balanced",
 			inputMode: "rawvideo",
-			forceSoftwareEncoder: true,
+			forceSoftwareEncoder,
+			requireHardwareEncoder: !forceSoftwareEncoder,
 			flipVertical: false,
 		});
 		if (!result.success || !result.sessionId) {
-			this.lastNativeExportError = result.error ?? "FFmpeg software encoder could not start";
+			this.lastNativeExportError = result.error ?? "Native raw-frame encoder could not start";
 			return false;
 		}
 		this.nativeExportSessionId = result.sessionId;
@@ -2950,20 +2964,43 @@ export class ModernVideoExporter {
 	): Promise<void> {
 		if (this.nativeRawFrameMode) {
 			const sessionId = this.nativeExportSessionId;
-			if (!sessionId) throw new Error("FFmpeg software export session is not active");
+			if (!sessionId) throw new Error("Native raw-frame export session is not active");
+			const frameBytes = this.config.width * this.config.height * 4;
+			const writeLimit = Math.max(
+				1,
+				Math.min(this.maxNativeWriteInFlight, Math.floor((64 * 1024 * 1024) / frameBytes)),
+			);
+			while (this.nativeWritePromises.size >= writeLimit) {
+				const waitStartedAt = this.getNowMs();
+				await this.awaitOldestNativeWrite();
+				this.nativeBackpressureTimeMs += this.getNowMs() - waitStartedAt;
+				if (this.cancelled) return;
+			}
+			if (this.nativeWriteError) throw this.nativeWriteError;
 			const captureStartedAt = this.getNowMs();
 			const pixels = this.renderer!.capturePixelsForNativeExport();
 			if (!pixels || pixels.byteLength !== this.config.width * this.config.height * 4) {
-				throw new Error("Could not capture the rendered frame for FFmpeg software export");
+				throw new Error("Could not capture the rendered frame for native export");
 			}
 			this.nativeCaptureTimeMs += this.getNowMs() - captureStartedAt;
 			const writeStartedAt = this.getNowMs();
-			const result = await window.electronAPI.nativeVideoExportWriteFrame(
-				sessionId,
-				new Uint8Array(pixels.buffer, pixels.byteOffset, pixels.byteLength),
-			);
-			this.nativeWriteTimeMs += this.getNowMs() - writeStartedAt;
-			if (!result.success) throw new Error(result.error ?? "FFmpeg software frame write failed");
+			const writePromise = window.electronAPI
+				.nativeVideoExportWriteFrame(
+					sessionId,
+					new Uint8Array(pixels.buffer, pixels.byteOffset, pixels.byteLength),
+				)
+				.then((result) => {
+					this.nativeWriteTimeMs += this.getNowMs() - writeStartedAt;
+					if (!result.success) throw new Error(result.error ?? "Native frame write failed");
+				})
+				.catch((error) => {
+					if (!this.cancelled && this.nativeExportSessionId === sessionId) {
+						this.nativeWriteError = error instanceof Error ? error : new Error(String(error));
+					}
+					throw error;
+				});
+			this.trackNativeWritePromise(writePromise);
+			this.nativeSubmitTimeMs += this.getNowMs() - writeStartedAt;
 			return;
 		}
 		if (!this.nativeH264Encoder || !this.nativeExportSessionId) {
@@ -3392,6 +3429,25 @@ export class ModernVideoExporter {
 
 		if (nowMs - this.lastThroughputLogTimeMs >= 1000 || currentFrame === totalFrames) {
 			const safeFrameCount = Math.max(this.processedFrameCount, 1);
+			const sampleFrames = Math.max(currentFrame - this.lastProgressSampleFrame, 1);
+			const stageSample = {
+				render: this.renderFrameTimeMs,
+				capture: this.nativeCaptureTimeMs,
+				submit: this.nativeSubmitTimeMs,
+				wait: this.nativeBackpressureTimeMs,
+				callback: this.frameCallbackTimeMs,
+			};
+			const sampleStageMsPerFrame = Object.fromEntries(
+				(Object.keys(stageSample) as Array<keyof typeof stageSample>).map((stage) => [
+					stage,
+					Number(((stageSample[stage] - this.lastStageSample[stage]) / sampleFrames).toFixed(3)),
+				]),
+			);
+			// Time outside the frame consumer includes decoder/demux waits, not pure decoder CPU time.
+			const samplePipelineWaitMsPerFrame = Math.max(
+				0,
+				(sampleElapsedMs - (stageSample.callback - this.lastStageSample.callback)) / sampleFrames,
+			);
 			this.peakEncodeQueueSize = Math.max(
 				this.peakEncodeQueueSize,
 				this.getCurrentEncodeBacklog(),
@@ -3414,6 +3470,8 @@ export class ModernVideoExporter {
 					peakEncodeQueueSize: this.peakEncodeQueueSize,
 					nativeWriteInFlight: this.nativeWritePromises.size,
 					peakNativeWriteInFlight: this.peakNativeWriteInFlight,
+					sampleStageMsPerFrame,
+					samplePipelineWaitMsPerFrame: Number(samplePipelineWaitMsPerFrame.toFixed(3)),
 					averageFrameCallbackMs: Number(
 						(this.frameCallbackTimeMs / safeFrameCount).toFixed(3),
 					),
@@ -3434,6 +3492,7 @@ export class ModernVideoExporter {
 				})}`,
 			);
 			this.lastThroughputLogTimeMs = nowMs;
+			this.lastStageSample = stageSample;
 			this.lastProgressSampleTimeMs = nowMs;
 			this.lastProgressSampleFrame = currentFrame;
 		}
@@ -3480,6 +3539,8 @@ export class ModernVideoExporter {
 			peakNativeWriteInFlight: this.peakNativeWriteInFlight,
 			nativeCaptureMs: this.nativeCaptureTimeMs,
 			nativeWriteMs: this.nativeWriteTimeMs,
+			nativeSubmitMs: this.nativeSubmitTimeMs,
+			nativeBackpressureMs: this.nativeBackpressureTimeMs,
 			finalizationMs: this.finalizationTimeMs,
 			frameCount: this.processedFrameCount,
 			renderBackend: this.renderBackend ?? undefined,
@@ -3834,6 +3895,9 @@ export class ModernVideoExporter {
 		this.peakNativeWriteInFlight = 0;
 		this.nativeCaptureTimeMs = 0;
 		this.nativeWriteTimeMs = 0;
+		this.nativeSubmitTimeMs = 0;
+		this.nativeBackpressureTimeMs = 0;
+		this.lastStageSample = { render: 0, capture: 0, submit: 0, wait: 0, callback: 0 };
 		this.finalizationTimeMs = 0;
 		this.finalizationStageMs = {};
 		this.effectiveDurationSec = 0;

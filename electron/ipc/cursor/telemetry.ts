@@ -63,6 +63,7 @@ export function normalizeCursorTelemetrySamples(rawSamples: unknown): CursorTele
 					point.interactionType === "mouseup"
 						? point.interactionType
 						: undefined,
+				typing: point.typing === true ? true : undefined,
 				cursorType:
 					point.cursorType === "arrow" ||
 					point.cursorType === "text" ||

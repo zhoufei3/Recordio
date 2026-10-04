@@ -79,7 +79,7 @@ export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof
 	);
 	const selectedAudioIsEffect = isEffectAudioId(timeline.selectedAudioId);
 	const selectedAudioEffectKind = selectedAudioIsEffect
-		? timeline.selectedAudioId?.startsWith("click-sound-") ? "click" as const : "zoom" as const
+		? timeline.selectedAudioId?.startsWith("typing-sound-") ? "typing" as const : timeline.selectedAudioId?.startsWith("click-sound-") ? "click" as const : "zoom" as const
 		: null;
 
 	const clipAudioReset = useClipAudioReset(timeline);
@@ -135,7 +135,7 @@ export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof
 		onClipDelete: clipCommands.handleClipDelete,
 		selectedAudioId: timeline.selectedAudioId,
 		selectedAudioVolume: selectedAudio?.volume ?? (selectedAudioIsEffect && timeline.selectedAudioId
-			? getEffectAudioVolume(timeline.selectedAudioId, timeline.effectAudioVolumes) : null),
+			? selectedAudioEffectKind === "typing" && !Number.isFinite(timeline.effectAudioVolumes[timeline.selectedAudioId]) ? appearance.typingSoundVolume : getEffectAudioVolume(timeline.selectedAudioId, timeline.effectAudioVolumes) : null),
 		selectedAudioEffectKind,
 		selectedAudioNormalize:
 			selectedAudio?.normalize ?? (timeline.selectedAudioId ? false : null),
@@ -205,6 +205,10 @@ export function useEditorSettingsPanelProps(input: Input): ComponentProps<typeof
 		leftClickSound: appearance.leftClickSound,
 		onLeftClickSoundChange: appearance.setLeftClickSound,
 		rightClickSound: appearance.rightClickSound,
+	typingSound: appearance.typingSound,
+	onTypingSoundChange: appearance.setTypingSound,
+	typingSoundVolume: appearance.typingSoundVolume,
+	onTypingSoundVolumeChange: appearance.setTypingSoundVolume,
 		onRightClickSoundChange: appearance.setRightClickSound,
 		defaultZoomSoundId: appearance.defaultZoomSoundId,
 		defaultZoomPanSoundId: appearance.defaultZoomPanSoundId,

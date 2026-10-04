@@ -100,6 +100,7 @@ export type CursorInteractionType =
 	| "mouseup";
 
 export interface CursorTelemetryPoint {
+	typing?: boolean;
 	timeMs: number;
 	cx: number;
 	cy: number;
@@ -121,9 +122,13 @@ export type NativeMacWindowSource = {
 	height?: number;
 };
 
-export type HookEventName = "mousedown" | "mouseup" | "mousemove";
+export type HookEventName = "mousedown" | "mouseup" | "mousemove" | "keydown" | "keyup";
 
 export type HookMouseEvent = {
+	keycode?: number;
+	ctrlKey?: boolean;
+	altKey?: boolean;
+	metaKey?: boolean;
 	button?: number;
 	mouseButton?: number;
 	x?: number;

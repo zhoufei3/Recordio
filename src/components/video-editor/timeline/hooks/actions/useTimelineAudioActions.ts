@@ -28,6 +28,7 @@ interface UseTimelineAudioActionsParams {
 		span: { start: number; end: number },
 		audioPath: string,
 		trackIndex?: number,
+		label?: string,
 	) => void;
 	deps?: Partial<TimelineAudioActionsDeps>;
 }
@@ -140,5 +141,41 @@ export function useTimelineAudioActions({
 		[videoDuration, totalMs, onAudioAdded, deps, currentTimeMs, audioRegions],
 	);
 
-	return { handleAddAudio };
+	const handleAddBuiltinAudio = useCallback(
+		async (audioPath: string, label: string) => {
+			if (!videoDuration || totalMs <= 0 || !onAudioAdded) return;
+			const audioDurationMs = await deps.probeAudioDurationMs(audioPath);
+			if (audioDurationMs <= 0) {
+				deps.reportError("Could not read audio file", "The built-in sound could not be loaded.");
+				return;
+			}
+
+			const startPos = Math.max(0, Math.min(currentTimeMs, totalMs));
+			const placement = resolveAudioPlacement({
+				audioRegions: audioRegions.filter(
+					(region) => !("effectKind" in region && region.effectKind),
+				),
+				startPos,
+				totalMs,
+				audioDurationMs,
+			});
+			if (!placement) {
+				deps.reportError(
+					"Cannot place sound here",
+					"There is no available audio track space at the current playhead position.",
+				);
+				return;
+			}
+
+			onAudioAdded(
+				{ start: startPos, end: startPos + placement.durationMs },
+				audioPath,
+				placement.trackIndex,
+				label,
+			);
+		},
+		[videoDuration, totalMs, onAudioAdded, deps, currentTimeMs, audioRegions],
+	);
+
+	return { handleAddAudio, handleAddBuiltinAudio };
 }

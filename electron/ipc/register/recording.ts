@@ -1947,7 +1947,7 @@ export function registerRecordingHandlers(
 
 	ipcMain.handle(
 		"set-recording-state",
-		(_, recording: boolean, captureCursorTelemetry = true) => {
+		(_, recording: boolean, captureCursorTelemetry = true, captureTyping = true) => {
 			if (recording) {
 				stopCursorCapture();
 				stopInteractionCapture();
@@ -1966,7 +1966,7 @@ export function registerRecordingHandlers(
 					setCursorCaptureStartTimeMs(Date.now());
 					sampleCursorPoint();
 					startCursorSampling();
-					void startInteractionCapture();
+					void startInteractionCapture(captureTyping);
 				} else {
 					showCursor();
 				}

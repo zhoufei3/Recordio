@@ -308,6 +308,7 @@ export function registerExportHandlers() {
 				encodingMode: NativeExportEncodingMode;
 				inputMode?: "rawvideo" | "h264-stream";
 				forceSoftwareEncoder?: boolean;
+				requireHardwareEncoder?: boolean;
 				flipVertical?: boolean;
 			},
 		) => {
@@ -334,7 +335,11 @@ export function registerExportHandlers() {
 				} else {
 					encoderName = options.forceSoftwareEncoder
 						? "libx264"
-						: await resolveNativeVideoEncoder(ffmpegPath, options.encodingMode);
+						: await resolveNativeVideoEncoder(
+								ffmpegPath,
+								options.encodingMode,
+								options.requireHardwareEncoder,
+							);
 					ffmpegArgs = buildNativeVideoExportArgs(encoderName, options, outputPath);
 				}
 

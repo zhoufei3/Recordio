@@ -1,6 +1,6 @@
 import { Plus } from "@/components/ui/icons";
 import type { Span } from "dnd-timeline";
-import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type {
 	SourceAudioTrackMeta,
 	SourceAudioTrackSettings,
@@ -27,6 +27,7 @@ import type { ClipSequenceSpan } from "./core/timelineTypes";
 import { useTimelineAudioPeaks } from "./hooks/useTimelineAudioPeaks";
 import { useTimelineEditorRuntime } from "./hooks/useTimelineEditorRuntime";
 import { useTimelineRange } from "./hooks/useTimelineRange";
+import { prewarmFilmstripCache } from "./components/filmstrip/frameCache";
 import {
 	buildSourceSidecarPathCandidates,
 	buildTimelineSourceAudioTracks,
@@ -68,7 +69,7 @@ export interface TimelineEditorProps {
 	onSpeedSpanChange?: (id: string, span: Span) => void;
 	audioRegions?: AudioRegion[];
 	effectAudioRegions?: AudioRegion[];
-	onAudioAdded?: (span: Span, audioPath: string, trackIndex?: number) => void;
+	onAudioAdded?: (span: Span, audioPath: string, trackIndex?: number, label?: string) => void;
 	onAudioSpanChange?: (id: string, span: Span, trackIndex?: number) => void;
 	onAudioDelete?: (id: string) => void;
 	selectedAudioId?: string | null;
@@ -116,6 +117,7 @@ export interface TimelineEditorHandle {
 	splitClip: () => void;
 	addAnnotation: (trackIndex?: number) => void;
 	addAudio: (trackIndex?: number) => Promise<void>;
+	addBuiltinAudio: (audioPath: string, label: string) => Promise<void>;
 	keyframes: { id: string; time: number }[];
 }
 
@@ -190,6 +192,12 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 			() => Math.max(0, Math.round(videoDuration * 1000)),
 			[videoDuration],
 		);
+		useEffect(() => {
+			if (!videoPath) return;
+			const controller = new AbortController();
+			prewarmFilmstripCache(videoPath, controller.signal);
+			return () => controller.abort();
+		}, [videoPath]);
 		const currentTimeMs = useMemo(
 			() => Math.round((playheadTime ?? currentTime) * 1000),
 			[currentTime, playheadTime],
@@ -206,26 +214,31 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 		const timelineContainerRef = useRef<HTMLDivElement>(null);
 		const allAudioRegions = useMemo(() => [...audioRegions, ...effectAudioRegions], [audioRegions, effectAudioRegions]);
 		const horizontalScrollbarRef = useRef<HTMLDivElement>(null);
+		const syncedScrollbarPositionRef = useRef<number | null>(null);
 		const isTimelineFocusedRef = useRef(false);
-		const { setRange, clampedRange, handleTimelineWheel } = useTimelineRange({
+		const { setRange, clampedRange } = useTimelineRange({
 			totalMs,
 			timelineContainerRef,
 		});
 		const setZoom = (level: number) => {
 			if (totalMs <= 0) return;
-			const span = Math.max(300, totalMs / Math.max(1, level));
+			const span = totalMs / Math.max(1, Math.min(20, level));
 			const start = Math.max(0, Math.min(currentTimeMs - span / 2, totalMs - span));
 			setRange({ start, end: start + span });
 		};
 		const visibleSpanMs = Math.max(1, clampedRange.end - clampedRange.start);
 		const showHorizontalScrollbar = totalMs > visibleSpanMs + 1;
-		useEffect(() => {
+		useLayoutEffect(() => {
 			const scrollbar = horizontalScrollbarRef.current;
 			if (!scrollbar || !showHorizontalScrollbar) return;
 			const maxScroll = scrollbar.scrollWidth - scrollbar.clientWidth;
 			const maxStart = totalMs - visibleSpanMs;
 			const desired = maxStart > 0 ? (clampedRange.start / maxStart) * maxScroll : 0;
-			if (Math.abs(scrollbar.scrollLeft - desired) > 1) scrollbar.scrollLeft = desired;
+			if (Math.abs(scrollbar.scrollLeft - desired) > 0.5) {
+				scrollbar.scrollLeft = desired;
+				// Native scroll events also fire for programmatic position updates.
+				syncedScrollbarPositionRef.current = scrollbar.scrollLeft;
+			}
 		}, [clampedRange.start, showHorizontalScrollbar, totalMs, visibleSpanMs]);
 
 		const [liveSpanPreviewById, setLiveSpanPreviewById] = useState<Record<string, Span>>({});
@@ -458,9 +471,15 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 		}
 
 		return (
-			<div className="flex-1 min-h-0 flex flex-col bg-transparent overflow-hidden">
-				{filmstripProgress && filmstripProgress.pending > 0 && <div className="px-4 py-1 text-[11px] text-muted-foreground" role="status">{tEditor("playback.loadingFilmstrip").replace("{{completed}}", String(filmstripProgress.completed)).replace("{{total}}", String(filmstripProgress.total))}</div>}
-				{isLoading && (!filmstripProgress || filmstripProgress.pending === 0) && <div className="px-4 py-1 text-[11px] text-muted-foreground" role="status">{tEditor("playback.loadingAudio")}</div>}
+			<div className="relative flex-1 min-h-0 overflow-visible">
+				{((filmstripProgress && filmstripProgress.pending > 0) || isLoading) && (
+					<div className="pointer-events-none absolute left-4 top-[-6px] z-50 rounded-md border border-border bg-editor-surface/95 px-2.5 py-1.5 text-[11px] leading-none text-muted-foreground shadow-sm" role="status">
+						{filmstripProgress && filmstripProgress.pending > 0
+							? tEditor("playback.loadingFilmstrip").replace("{{completed}}", String(filmstripProgress.completed)).replace("{{total}}", String(filmstripProgress.total))
+							: tEditor("playback.loadingAudio")}
+					</div>
+				)}
+				<div className="flex h-full min-h-0 flex-col overflow-hidden bg-transparent">
 				<div
 					ref={timelineContainerRef}
 					data-testid="timeline-scroll"
@@ -481,7 +500,6 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 						setSelectedKeyframeId(null);
 						setSelectAllBlocksActive(false);
 					}}
-					onWheel={handleTimelineWheel}
 				>
 					<TimelineWrapper
 						range={clampedRange}
@@ -569,6 +587,9 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 						className="custom-scrollbar h-4 shrink-0 overflow-x-auto overflow-y-hidden"
 						onScroll={(event) => {
 							const scrollbar = event.currentTarget;
+							const syncedPosition = syncedScrollbarPositionRef.current;
+							syncedScrollbarPositionRef.current = null;
+							if (syncedPosition !== null && Math.abs(scrollbar.scrollLeft - syncedPosition) < 0.5) return;
 							const maxScroll = scrollbar.scrollWidth - scrollbar.clientWidth;
 							if (maxScroll <= 0) return;
 							const start = (scrollbar.scrollLeft / maxScroll) * (totalMs - visibleSpanMs);
@@ -578,6 +599,7 @@ const TimelineEditor = forwardRef<TimelineEditorHandle, TimelineEditorProps>(
 						<div style={{ width: `${(totalMs / visibleSpanMs) * 100}%`, height: 1 }} />
 					</div>
 				)}
+				</div>
 			</div>
 		);
 	},

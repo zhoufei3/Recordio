@@ -93,8 +93,20 @@ function normalizeTelemetrySample(
 		cx: Math.max(0, Math.min(sample.cx, 1)),
 		cy: Math.max(0, Math.min(sample.cy, 1)),
 		interactionType: sample.interactionType,
+		typing: sample.typing,
 		cursorType: sample.cursorType,
 	};
+}
+
+function firstSampleAtOrAfter(samples: CursorTelemetryPoint[], timeMs: number, strictlyAfter = false) {
+	let low = 0;
+	let high = samples.length;
+	while (low < high) {
+		const mid = (low + high) >>> 1;
+		if (samples[mid].timeMs < timeMs || (strictlyAfter && samples[mid].timeMs === timeMs)) low = mid + 1;
+		else high = mid;
+	}
+	return low;
 }
 
 function applyCursorTypeInRange(
@@ -103,8 +115,9 @@ function applyCursorTypeInRange(
 	endMs: number,
 	cursorType: NonNullable<CursorTelemetryPoint["cursorType"]>,
 ) {
-	for (const sample of samples) {
-		if (sample.timeMs < startMs || sample.timeMs > endMs) continue;
+	for (let index = firstSampleAtOrAfter(samples, startMs); index < samples.length; index++) {
+		const sample = samples[index];
+		if (sample.timeMs > endMs) break;
 		if (!sample.cursorType) {
 			sample.cursorType = cursorType;
 		}
@@ -148,15 +161,13 @@ export function normalizeCursorTelemetry(
 		}
 	}
 
+	const mouseUps = normalized.filter((sample) => sample.interactionType === "mouseup");
 	for (const sample of normalized) {
 		if (sample.interactionType !== "click" && sample.interactionType !== "double-click") {
 			continue;
 		}
 
-		const mouseUp = normalized.find(
-			(candidate) =>
-				candidate.timeMs > sample.timeMs && candidate.interactionType === "mouseup",
-		);
+		const mouseUp = mouseUps[firstSampleAtOrAfter(mouseUps, sample.timeMs, true)];
 		if (!mouseUp) {
 			continue;
 		}
@@ -467,7 +478,10 @@ function classifyPostClickBehavior(
 	const clickTime = clickSample.timeMs;
 
 	// Check for mouseup shortly after (drag detection)
-	const mouseUpAfter = samples.find(
+	const mouseUpAfter = samples.slice(
+		firstSampleAtOrAfter(samples, clickTime, true),
+		firstSampleAtOrAfter(samples, clickTime + 3000),
+	).find(
 		(s) =>
 			s.interactionType === "mouseup" && s.timeMs > clickTime && s.timeMs - clickTime < 3000,
 	);
@@ -484,7 +498,10 @@ function classifyPostClickBehavior(
 	}
 
 	// Analyze trajectory in the 400ms-2000ms window after click
-	const moveSamples = samples.filter(
+	const moveSamples = samples.slice(
+		firstSampleAtOrAfter(samples, clickTime + 100, true),
+		firstSampleAtOrAfter(samples, clickTime + 2000, true),
+	).filter(
 		(s) =>
 			s.timeMs > clickTime + 100 &&
 			s.timeMs <= clickTime + 2000 &&

@@ -15,6 +15,7 @@ export function DashboardSettings({ onImportFile }: { onImportFile: () => Promis
 	const [recordings, setRecordings] = useState("");
 	const [appVersion, setAppVersion] = useState("—");
 	const [hideHud, setHideHud] = useState(true);
+	const [captureTyping, setCaptureTyping] = useState(() => window.electronAPI.getAppSetting("recordio.capture-typing") !== false);
 	const [captureSupported, setCaptureSupported] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const run = async (action: () => Promise<void>) => {
@@ -67,6 +68,11 @@ export function DashboardSettings({ onImportFile }: { onImportFile: () => Promis
 					</SettingsRow>
 				</SettingsCategory>
 				<SettingsCategory category="recording">
+					<SettingsRow title={t("dashboard.captureTyping", "Record typing rhythm")} description={t("dashboard.captureTypingDescription", "Presentation recordings only. Saves keystroke timing, not typed text, for optional typing sounds.")}>
+						<Switch checked={captureTyping} aria-label={t("dashboard.captureTyping", "Record typing rhythm")} onCheckedChange={(enabled) => {
+							if (window.electronAPI.setAppSetting("recordio.capture-typing", enabled)) setCaptureTyping(enabled);
+						}} />
+					</SettingsRow>
 					<SettingsRow
 						title={t("dashboard.recordingsFolder", "Recordings folder")}
 						description={
@@ -154,6 +160,7 @@ export function DashboardSettings({ onImportFile }: { onImportFile: () => Promis
 										"recordly_custom_fonts",
 										"openscreen_custom_fonts",
 										"recordly.recording-mode",
+										"recordio.capture-typing",
 									]) {
 										localStorage.removeItem(key);
 									}

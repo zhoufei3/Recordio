@@ -113,6 +113,8 @@ export function useAppearanceState(preferences: EditorPreferences) {
 	const [rightClickEffect, setRightClickEffect] = useState(preferences.rightClickEffect);
 	const [leftClickSound, setLeftClickSound] = useState(preferences.leftClickSound);
 	const [rightClickSound, setRightClickSound] = useState(preferences.rightClickSound);
+	const [typingSound, setTypingSound] = useState(preferences.typingSound ?? "none");
+	const [typingSoundVolume, setTypingSoundVolume] = useState(preferences.typingSoundVolume ?? 0.35);
 	const [cursorClickBounce, setCursorClickBounce] = useState(preferences.cursorClickBounce);
 	const [cursorClickBounceDuration, setCursorClickBounceDuration] = useState(
 		preferences.cursorClickBounceDuration,
@@ -214,6 +216,10 @@ export function useAppearanceState(preferences: EditorPreferences) {
 		setLeftClickSound,
 		rightClickSound,
 		setRightClickSound,
+		typingSound,
+		setTypingSound,
+		typingSoundVolume,
+		setTypingSoundVolume,
 		cursorClickBounce,
 		setCursorClickBounce,
 		cursorClickBounceDuration,

@@ -120,7 +120,7 @@ export default function PlaybackCursor({
 						event.stopPropagation();
 						setIsDragging(true);
 					}}
-					className="absolute top-0 h-4 rounded-full bg-red-500 text-white cursor-ew-resize pointer-events-auto overflow-hidden transition-[width,transform] duration-150"
+					className="absolute top-0 h-4 rounded-full bg-red-500 text-white cursor-ew-resize pointer-events-auto overflow-visible transition-[width,transform] duration-150"
 					style={{
 						width: expanded ? 68 : 16,
 						left: "50%",
@@ -128,8 +128,12 @@ export default function PlaybackCursor({
 					}}
 				>
 					<span
+						aria-hidden="true"
+						className="pointer-events-auto absolute -inset-2 z-0 rounded-full"
+					/>
+					<span
 						className={cn(
-							"block whitespace-nowrap text-[10px] font-medium tabular-nums transition-opacity",
+							"relative z-10 block whitespace-nowrap text-[10px] font-medium tabular-nums transition-opacity",
 							expanded ? "opacity-100" : "opacity-0",
 						)}
 					>

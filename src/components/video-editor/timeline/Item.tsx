@@ -10,10 +10,9 @@ import { ClipFilmstrip } from "./components/filmstrip/ClipFilmstrip";
 import type { Span, GetSpanFromDragEvent, GetSpanFromResizeEvent } from "dnd-timeline";
 import { useItem, useTimelineContext } from "dnd-timeline";
 import { useCallback, useMemo, useRef, type PointerEvent } from "react";
-import { useDndMonitor } from "@dnd-kit/core";
 import { useTimelinePresentation } from "./core/TimelinePresentation";
 import { getRegionDisplaySpan, snapRegionSpan } from "./core/clipPresentation";
-import { resolveDragEnd, resolveResizeEnd } from "./dnd/engine";
+import { resolveResizeEnd } from "./dnd/engine";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatClipSpeedLabel } from "../clipSpeedChange";
@@ -22,6 +21,7 @@ import { formatPlayheadTime } from "./core/time";
 import AudioWaveform from "./components/waveform/AudioWaveform";
 import type { AudioPeaksData } from "./core/timelineTypes";
 import glassStyles from "./ItemGlass.module.css";
+import { ZOOM_DEPTH_OPTIONS } from "../types";
 
 interface ItemProps {
 	clipPresentation?: ClipPresentation[];
@@ -54,14 +54,9 @@ interface ItemProps {
 }
 
 // Map zoom depth to multiplier labels
-const ZOOM_LABELS: Record<number, string> = {
-	1: "1.25×",
-	2: "1.5×",
-	3: "1.8×",
-	4: "2.2×",
-	5: "3.5×",
-	6: "5×",
-};
+const ZOOM_LABELS = Object.fromEntries(
+	ZOOM_DEPTH_OPTIONS.map(({ depth, label }) => [depth, label]),
+);
 
 export default function Item({
 	clipPresentation: suppliedPresentation,
@@ -148,22 +143,6 @@ export default function Item({
 		node.style.transform = deltaY ? `translateY(${deltaY}px)` : "none";
 	};
 	const { previewConfig } = presentation;
-	useDndMonitor({
-		onDragMove(event) {
-			if (event.active.id !== id || !clipPresentation) return;
-			const next = getMediaSpanFromDrag(event);
-			if (next) {
-				const resolved = resolveDragEnd(id, next, rowId, previewConfig);
-				paintPreview(resolved?.span ?? span, event.delta.y);
-			}
-		},
-		onDragEnd(event) {
-			if (event.active.id === id) paintPreview(span);
-		},
-		onDragCancel(event) {
-			if (event.active.id === id) paintPreview(span);
-		},
-	});
 	const { setNodeRef, attributes, listeners, itemStyle, itemContentStyle } = useItem({
 		id,
 		span: displaySpan,
@@ -252,7 +231,7 @@ export default function Item({
 	const MIN_ITEM_PX = 6;
 	const handleSelect = (event: PointerEvent<HTMLDivElement>) => {
 		onSelect?.();
-		onSelectId?.(id, event.ctrlKey || event.metaKey || event.shiftKey);
+		onSelectId?.(id, event.ctrlKey || event.metaKey);
 	};
 	const safeItemStyle = {
 		...itemStyle,

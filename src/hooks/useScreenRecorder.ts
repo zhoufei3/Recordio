@@ -1927,6 +1927,7 @@ export function useScreenRecorder(
 						await window.electronAPI?.setRecordingState(
 							true,
 							recordingMode === "editor",
+							window.electronAPI.getAppSetting("recordio.capture-typing") !== false,
 						);
 					} catch (stateError) {
 						console.warn(
@@ -2314,6 +2315,7 @@ export function useScreenRecorder(
 				await window.electronAPI?.setRecordingState(
 					true,
 					recordingMode === "editor",
+					window.electronAPI.getAppSetting("recordio.capture-typing") !== false,
 				);
 			} catch (stateError) {
 				console.warn("Failed to notify main process that recording started:", stateError);

@@ -1,5 +1,13 @@
 import type { Range } from "dnd-timeline";
-import { useCallback, useEffect, useMemo, useState, type RefObject, type WheelEvent } from "react";
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	type RefObject,
+	type SetStateAction,
+} from "react";
 import { createInitialRange, normalizeWheelDeltaToPixels } from "../core/time";
 
 interface UseTimelineRangeParams {
@@ -42,21 +50,40 @@ export function resolveTimelineWheelPanDeltaPx({
 }
 
 export function useTimelineRange({ totalMs, timelineContainerRef }: UseTimelineRangeParams) {
-	const [range, setRange] = useState<Range>(() => createInitialRange(totalMs));
+	// Store viewport fractions so edits that change duration preserve the selected zoom.
+	const [relativeRange, setRelativeRange] = useState<Range>({ start: 0, end: 1 });
+	const range = useMemo<Range>(
+		() =>
+			totalMs > 0
+				? { start: relativeRange.start * totalMs, end: relativeRange.end * totalMs }
+				: createInitialRange(totalMs),
+		[relativeRange, totalMs],
+	);
+	const clampedRange = range;
+	const zoomFrameRef = useRef<number | null>(null);
+	const pendingZoomRef = useRef({ steps: 0, position: 0.5 });
+	const setRange = useCallback(
+		(update: SetStateAction<Range>) => {
+			if (totalMs <= 0) return;
+			setRelativeRange((previous) => {
+				const current = { start: previous.start * totalMs, end: previous.end * totalMs };
+				const next = typeof update === "function" ? update(current) : update;
+				if (!Number.isFinite(next.start) || !Number.isFinite(next.end)) return previous;
+				const span = Math.max(1 / 20, Math.min(1, (next.end - next.start) / totalMs));
+				const start = Math.max(0, Math.min(next.start / totalMs, 1 - span));
+				const end = start + span;
+				if (Math.abs(start - previous.start) < 1e-12 && Math.abs(end - previous.end) < 1e-12) return previous;
+				return { start, end };
+			});
+		},
+		[totalMs],
+	);
 
 	useEffect(() => {
-		setRange(createInitialRange(totalMs));
-	}, [totalMs]);
-
-	const clampedRange = useMemo<Range>(() => {
-		if (totalMs === 0) {
-			return range;
-		}
-		return {
-			start: Math.max(0, Math.min(range.start, totalMs)),
-			end: Math.min(range.end, totalMs),
-		};
-	}, [range, totalMs]);
+		if (totalMs <= 0) return;
+		const zoom = 1 / (relativeRange.end - relativeRange.start);
+		window.dispatchEvent(new CustomEvent("recordio:timeline-zoom", { detail: zoom }));
+	}, [relativeRange, totalMs]);
 
 	const panTimelineRange = useCallback(
 		(deltaMs: number) => {
@@ -71,29 +98,42 @@ export function useTimelineRange({ totalMs, timelineContainerRef }: UseTimelineR
 				return { start: nextStart, end: nextStart + visibleSpan };
 			});
 		},
-		[totalMs],
+		[setRange, totalMs],
 	);
 
 	const handleTimelineWheel = useCallback(
-		(event: WheelEvent<HTMLDivElement>) => {
+		(event: WheelEvent) => {
 			// Keep the vertical track scrollbar under direct drag control only.
 			event.preventDefault();
 			if (totalMs <= 0) {
 				return;
 			}
 			if ((event.ctrlKey || event.metaKey) && !event.shiftKey) {
-				event.preventDefault();
+				if (!Number.isFinite(event.deltaY) || event.deltaY === 0) return;
 				const container = timelineContainerRef.current;
-				const rect = container?.getBoundingClientRect();
-				const position = rect ? Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)) : 0.5;
-				const previousSpan = clampedRange.end - clampedRange.start;
-				if (previousSpan <= 0) return;
-				const zoom = Math.max(1, Math.min(20, totalMs / previousSpan * (event.deltaY < 0 ? 1.12 : 1 / 1.12)));
-				const span = totalMs / zoom;
-				const anchor = clampedRange.start + previousSpan * position;
-				const start = Math.max(0, Math.min(anchor - span * position, totalMs - span));
-				setRange({ start, end: start + span });
-				window.dispatchEvent(new CustomEvent("recordio:timeline-zoom", { detail: zoom }));
+				const viewport = container?.querySelector<HTMLElement>("[data-timeline-viewport]");
+				const rect = (viewport ?? container)?.getBoundingClientRect();
+				const position = rect && rect.width > 0
+					? Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width))
+					: 0.5;
+				pendingZoomRef.current.steps -= normalizeWheelDeltaToPixels(event.deltaY, event.deltaMode) / 100;
+				pendingZoomRef.current.position = position;
+				if (zoomFrameRef.current === null) {
+					zoomFrameRef.current = requestAnimationFrame(() => {
+						zoomFrameRef.current = null;
+						const { steps, position: anchorPosition } = pendingZoomRef.current;
+						pendingZoomRef.current.steps = 0;
+						setRange((previous) => {
+							const previousSpan = previous.end - previous.start;
+							if (previousSpan <= 0) return previous;
+							const zoom = Math.max(1, Math.min(20, (totalMs / previousSpan) * Math.pow(1.12, steps)));
+							const span = totalMs / zoom;
+							const anchor = previous.start + previousSpan * anchorPosition;
+							const start = Math.max(0, Math.min(anchor - span * anchorPosition, totalMs - span));
+							return { start, end: start + span };
+						});
+					});
+				}
 				return;
 			}
 
@@ -124,8 +164,28 @@ export function useTimelineRange({ totalMs, timelineContainerRef }: UseTimelineR
 			const deltaMs = (horizontalDeltaPx / containerWidth) * visibleRangeMs;
 			panTimelineRange(deltaMs);
 		},
-		[clampedRange.end, clampedRange.start, panTimelineRange, timelineContainerRef, totalMs],
+		[
+			clampedRange.end,
+			clampedRange.start,
+			panTimelineRange,
+			setRange,
+			timelineContainerRef,
+			totalMs,
+		],
 	);
+
+	useEffect(() => {
+		const container = timelineContainerRef.current;
+		if (!container) return;
+		container.addEventListener("wheel", handleTimelineWheel, { passive: false });
+		return () => container.removeEventListener("wheel", handleTimelineWheel);
+	}, [handleTimelineWheel, timelineContainerRef]);
+
+	useEffect(() => () => {
+		if (zoomFrameRef.current !== null) cancelAnimationFrame(zoomFrameRef.current);
+		zoomFrameRef.current = null;
+		pendingZoomRef.current.steps = 0;
+	}, [totalMs]);
 
 	return {
 		range,

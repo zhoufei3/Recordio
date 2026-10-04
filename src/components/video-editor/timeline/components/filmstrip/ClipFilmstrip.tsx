@@ -1,8 +1,8 @@
-import { Skeleton } from "@/components/ui/skeleton";
-import { useTimelineContext, type Span } from "dnd-timeline";
+import { type Span, useTimelineContext } from "dnd-timeline";
 import { useEffect, useRef, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { filmstripSampleTimes } from "../../core/filmstrip";
-import { extractFilmstrip } from "./frameCache";
+import { extractFilmstrip, loadCachedFilmstrip } from "./frameCache";
 
 export function ClipFilmstrip({
 	path,
@@ -53,6 +53,14 @@ export function ClipFilmstrip({
 		);
 		setLoading(times.length > 0);
 		if (times.length) {
+			let extractionFinished = false;
+			void loadCachedFilmstrip(path, times, controller.signal)
+				.then((cached) => {
+					if (!controller.signal.aborted && !extractionFinished && cached.some(Boolean)) {
+						setFrames(cached);
+					}
+				})
+				.catch(() => undefined);
 			void extractFilmstrip(path, times, controller.signal)
 				.then((images) => {
 					if (!controller.signal.aborted) setFrames(images);
@@ -61,6 +69,7 @@ export function ClipFilmstrip({
 					/* Keep the clip's color when a source cannot be decoded. */
 				})
 				.finally(() => {
+					extractionFinished = true;
 					if (!controller.signal.aborted) setLoading(false);
 				});
 		}
@@ -74,16 +83,24 @@ export function ClipFilmstrip({
 			aria-hidden="true"
 		>
 			{loading && frames.length === 0 && <Skeleton className="h-full w-full rounded-none" />}
-			{frames.map((frame, index) => (
-				<img
-					key={index}
-					src={frame}
-					alt=""
-					draggable={false}
-					className="h-full min-w-0 flex-1 object-cover"
-					style={{ width: `${100 / frames.length}%` }}
-				/>
-			))}
+			{frames.map((frame, index) =>
+				frame ? (
+					<img
+						key={index}
+						src={frame}
+						alt=""
+						draggable={false}
+						className="h-full min-w-0 flex-1 object-cover"
+						style={{ width: `${100 / frames.length}%` }}
+					/>
+				) : (
+					<Skeleton
+						key={index}
+						className="h-full min-w-0 flex-1 rounded-none"
+						style={{ width: `${100 / frames.length}%` }}
+					/>
+				),
+			)}
 		</div>
 	);
 }
