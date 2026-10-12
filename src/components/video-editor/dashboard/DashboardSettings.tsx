@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { useScopedT } from "@/contexts/I18nContext";
 import donationCode from "@/assets/donation-code.jpg";
+import douyinAuthorCode from "@/assets/douyin-author.jpg";
 export const DashboardSettingsContext = createContext<ReactNode>(null);
 export function DashboardSettings({ onImportFile }: { onImportFile: () => Promise<void> }) {
 	const t = useScopedT("settings");
@@ -250,7 +251,16 @@ export function DashboardSettings({ onImportFile }: { onImportFile: () => Promis
 						<p>{t("about.license", "The original project is licensed under GNU AGPLv3. Copyright © 2026 webadderall. This version retains the applicable copyright and license notices.")}</p>
 						<div className="border-t border-border pt-4">
 							<p className="mb-3">你可以通过以下方式支持我，谢谢。</p>
-							<img className="h-auto w-48 max-w-full rounded-lg" src={donationCode} alt="支付宝赞赏码" />
+							<div className="flex flex-wrap items-start gap-6 sm:gap-12">
+								<figure className="w-48 max-w-full space-y-2">
+									<img className="h-auto w-full rounded-xl" src={donationCode} alt="支付宝赞赏码" />
+									<figcaption className="text-center text-xs text-muted-foreground">支付宝支持作者</figcaption>
+								</figure>
+								<figure className="w-48 max-w-full space-y-2">
+									<img className="h-auto w-full rounded-xl" src={douyinAuthorCode} alt="抖音作者二维码：我是周肥，抖音号 87507435505" />
+									<figcaption className="text-center text-xs text-muted-foreground">抖音扫码关注作者</figcaption>
+								</figure>
+							</div>
 						</div>
 					</div>
 				</SettingsCategory>
